@@ -1,0 +1,24 @@
+<h1 id="imag"></h1>
+<h1>Deep Earthquake Source Time Functions Using Variational Symmetric Autoencoders</h1><span id="i208">​​​​​​​</span>
+<div class="row">
+    <div class="st-col st-module col-3">
+        <q-select id="i80x" v-model="selected_eq" label="Select an earthquake or click on the map" autocomplete="true" :options="available_eqs"></q-select>
+        <plotly id="igbvk" class="sync_data" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOiIkX3tlcV9sYXR9IiwibG9uIjoiJF97ZXFfbG9uZ30iLCJtb2RlIjoibWFya2VycyIsInR5cGUiOiJzY2F0dGVybWFwYm94IiwibmFtZSI6IlRyYWNlIiwibWFya2VyIjp7ImNvbG9yIjoiJF97bWFwY29sb3J9In0sInoiOiIkX3ttYXBjb2xvcn0ifSx7IngiOiIiLCJ5IjoiIiwidHlwZSI6InNjYXR0ZXIiLCJuYW1lIjoiVHJhY2UifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMCJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwidGl0bGUiOiJFYXJ0aHF1YWtlcyIsInhheGlzIjp7InNob3dncmlkIjp0cnVlLCJ0aXRsZSI6eyJ0ZXh0IjoiQXhpcyBUaXRsZSJ9fSwieWF4aXMiOnsic2hvd2dyaWQiOnRydWV9fQ=="></plotly>
+        <q-select id="iiy6w" v-model="selected_rec_pixel" label="Select a pixel to plot its receivers below" :options="available_pixels"></q-select>
+        <plotly id="i79gq" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOls0MC43MTI3NzYsMzQuMDUyMjM1XSwibG9uIjpbLTc0LjAwNTk3NCwtMTE4LjI0MzY4NV0sIm1vZGUiOiJtYXJrZXJzIiwidHlwZSI6InNjYXR0ZXJtYXBib3giLCJuYW1lIjoiVHJhY2UifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjozOCwibG9uIjoiMzUifSwiem9vbSI6IjAifSwibWFyZ2luIjp7InIiOjAsInQiOjAsImIiOjAsImwiOjB9LCJ0aXRsZSI6IlJlY2VpdmVycyIsInhheGlzIjp7InNob3dncmlkIjp0cnVlfSwieWF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJwYXBlcl9iZ2NvbG9yIjoiI2ZmZmZmZiJ9"></plotly>
+        <h6 id="iuttf">About&nbsp;<br></h6>
+        <p id="iadug">While conventional methods typically employ convolutional models to differentiate source and path effects, our approach relies on Symmetric Autoencoding (SymAE). SymAE enables us to examine the spatial patterns in earthquake data and effectively separate slow-scale source effects from fast-scale path effects. This separation helps us to determine earthquake source parameters more accurately, without being influenced by path effects.</p>
+    </div>
+    <div class="st-col col-12 col-sm st-module">
+        <st-tabs id="i3y3w" class="bg-primary text-white shadow-2" v-model="selected_tab" :ids="tab_ids" :labels="tab_labels"></st-tabs>
+        <q-tab-panels id="ibfvl" v-model="selected_tab">
+            <q-tab-panel id="iv3n" name="tab_stf">
+                <q-select id="io01" v-model="selected_pixel" label="Select a pixel" :options="available_pixels"></q-select>
+                <plotly id="ir2v" :data="traces" config="e30=" :layout="stf_layout"></plotly>
+            </q-tab-panel>
+            <q-tab-panel id="i7yf" name="tab_usvs">
+                <plotly id="i3et-2" :data="traces_usvs" config="e30=" :layout="usvs_layout"></plotly>
+            </q-tab-panel>
+        </q-tab-panels>
+    </div>
+</div>
