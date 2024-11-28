@@ -1,13 +1,14 @@
 # the app.jl file is the main entry point to the application. It is a bridge between the UI and the data processing logic.
-using GenieFramework, JLD2, DataFrames, CSV, StatsBase, PlotlyBase, DSP, ColorSchemes, Healpix, Random
+using GenieFramework, JLD2, DataFrames, CSV, StatsBase, PlotlyBase, DSP, ColorSchemes, Healpix, Random, Colors
 @genietools
 
 
-usvs_color_scheme = ColorSchemes.inferno
+
+usvs_color_scheme = ColorSchemes.darkrainbow
 max_pixels = 60
 
 const model_filename = "20240912T190943289"
-available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("..", "scripts", "SavedResults", model_filename), join=true))
+available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", model_filename), join=true))
 # model_filename = "para-2024-09-12T19:09:43.289-batchsize=16_beta=1.0_network_type=conv_nhidden_dense=1024_nlayer_dense=3_nsteps=100_nt=256_ntau=19_p=30_q=30_spatial_transformer_gamma=1000.0_transformer=spatial.jld2"
 
 function generate_random_lat_long(n)
@@ -70,16 +71,21 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
     @out available_eqs = _available_eqs
     @out eq_lat = _eq_lat
     @out eq_long = _eq_long
+    @out eq_lat_selected = 0.0
+    @out eq_long_selected = 0.0
     @in selected_eq = string(sample(_available_eqs))
     @out available_pixels = ["",]
     @onchange selected_eq begin
         # notify(__model__, "Selected Earthquake $selected_eq")
         available_pixels = get_pixels(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1])
+        eq_lat_selected = eq_lat[findfirst(x -> x == selected_eq, available_eqs)]
+        eq_long_selected = eq_long[findfirst(x -> x == selected_eq, available_eqs)]
     end
 
     @out tab_ids = ["tab_stf", "tab_usvs"]
-    @out tab_labels = ["STF", "USVS"]
+    @out tab_labels = ["Single Pixel", "All Pixels"]
     @in selected_tab = "tab_stf"
+
 
     @out tgrid = range(-200, stop=200, length=400)[101:356]
     @in selected_pixel = ""
@@ -106,8 +112,9 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
                 x=tgrid,
                 y=stf,
                 line=attr(color="rgb(0,0,100)"),
-                name="Extracted P-Source Time Function Using Variational SymAE",
-                mode="lines"
+                name="Source Time Function Using Variational SymAE",
+                mode="lines",
+                legendgroup="group1",
             ),
             scatter(
                 x=vcat(tgrid, reverse(tgrid)), # x, then x reversed
@@ -116,12 +123,14 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
                 fillcolor="rgba(0,0,100,0.5)",
                 line=attr(color="rgba(0,0,0,0)"),
                 hoverinfo="skip",
+                legendgroup="group1",
                 showlegend=false
             ),
             scatter(x=tgrid,
                 y=raw_env_mean,
                 line=attr(color="rgb(100,0,0)"),
-                name="Raw Displacement Seismogram P Envelope",
+                legendgroup="group2",
+                name="Raw Displacement Seismogram Envelope",
                 mode="lines"),
             scatter(
                 x=vcat(tgrid, reverse(tgrid)), # x, then x reversed
@@ -129,6 +138,7 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
                 fill="toself",
                 fillcolor="rgba(100,0,0,0.2)",
                 line=attr(color="rgba(0,0,0,0)"),
+                legendgroup="group2",
                 hoverinfo="skip",
                 showlegend=false
             )
@@ -176,11 +186,14 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
         )
     )
 
-    @out traces_usvs = [scatter(x=collect(1:10), y=randn(10)), scatter(x=collect(1:10), y=randn(10))]
-    @onchange selected_eq, tgrid begin
+    @out traces_usvs = [scatter()]
+    @out traces_raw = [scatter()]
+    @onchange selected_eq, available_pixels, tgrid begin
         all_pixels = get_pixels(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1])
         traces_usvs[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
+        traces_raw[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
         av = 0
+        av_raw = 0
         scale = 2
         sorted_pixels = sort(tryparse.(Int, all_pixels))
         npixels = length(sorted_pixels)
@@ -191,26 +204,55 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
             end
             stf_bundle = get_stf_bundle(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1], string(pixel))
             pixel_stf = vec(mean(envelope(stf_bundle["USVS"]), dims=2))
+            pixel_raw = vec(stf_bundle["RAW"])
+
             av = av .+ pixel_stf
+            av_raw = av_raw .+ pixel_raw
+
             current_yoffset = (scale * (ipixel - 1))
             pixel_stf = pixel_stf ./ maximum(pixel_stf) .* 2.5
+            pixel_raw = pixel_raw ./ maximum(pixel_raw) .* 2.5
+
             # @show get(usvs_color_scheme, ipixel/npixels), ipixel/npixels
             push!(traces_usvs,
             scatter(
                 x=tgrid,
                 y=pixel_stf .+ current_yoffset,
-        	    line = attr(color = get(usvs_color_scheme, ipixel/npixels)),
+                # line = attr(color = "white"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                fillcolor=hex(get(usvs_color_scheme, ipixel/npixels)),
+                line=attr(color="black"),#hex(get(usvs_color_scheme, ipixel/npixels))),
                 fill="tonexty",
                 mode="lines",
                 name=string(pixel, ": ", angles), 
             ))     
+
+            push!(traces_raw,
+            scatter(
+                x=tgrid,
+                y=pixel_raw .+ current_yoffset,
+                # line = attr(color = "white"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                fillcolor=hex(get(usvs_color_scheme, ipixel/npixels)),
+                line=attr(color="black"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                fill="tonexty",
+                mode="lines",
+                name=string(pixel, ": ", angles), 
+            )) 
         end
-        last_yoffset = (scale * (30))
+        last_yoffset = (scale * (32))
         av .= av ./ maximum(av) .* 2.5
+        av_raw .= av_raw ./ maximum(av_raw) .* 2.5
         push!(traces_usvs,
         scatter(
             x=tgrid,
             y=av .+ last_yoffset,
+            line = attr(color = "black"),
+            mode="lines",
+            name="mean",
+        ))
+        push!(traces_raw, 
+        scatter(
+            x=tgrid,
+            y=av_raw .+ last_yoffset,
             line = attr(color = "black"),
             mode="lines",
             name="mean",
@@ -225,7 +267,7 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
         font_family="Computer Modern",
         font_color="black",
         font=attr(family="Computer Modern", size=22),
-        width = 600,
+        width = 575,
         height = 1200,
         yaxis_showgrid=false,
         xaxis_range=(-50, 60),
@@ -251,6 +293,7 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
         # title=attr(text=eqname,font = attr(size = 30), x=-100,),
         yaxis=attr(showticklabels=false),
         legend=attr(font=attr(size=18)),
+        legendgroup="group1",
         margin=attr(b=150),
     )
 
@@ -258,73 +301,18 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
     @onchange available_pixels begin
         selected_rec_pixel = first(available_pixels)
     end
-    # @private available_pixels = []
-    # @in selected_pixels = ""
-    # @out stf = get_stf(first(available_eqs_jld2), first(get_pixels(first(available_eqs_jld2))))
-    # @out tgrid = collect(1:256)
-
-
-    # we first declare reactive variables to hold the state of the interactive UI components
-    # for the select menu, we need a list of station codes, and a variable to hold the selected station code
-    # @in selected_fips = 1001
-    # same for the metrics
-    # @out metrics = ["PS", "TS", "WS10M", "PRECTOT"]
-    # @in selected_metrics = ["PS", "TS", "WS10M"]
-    # we expose a dataframe containing the data for the line plot configured in Genie Builder's visual editor
-    # @out fips_data = DataFrame("PS_date" => Date[], "PS" => Float64[], "TS_date" => Date[], "TS" => Float64[], "T2M_date" => Date[], "T2M" => Float64[], "WS10M_date" => Date[], "WS10M" => Float64[])
-    # @in N = 400
-    # map plot data, plot configured in GB
     @out mapcolor = []
     @in data_click = Dict{String,Any}()  # data from map click event
-    # metric shown on map
-    # @in map_metric = "TS"
-    # date of data shown on map
-    # @in date = "2000-01-21"
-    # when selecting a new station, metric  or N update the plot data. The isready variable is a pre-defined boolean that is set 
-    # to true when the page finishes loading
-    # @onchange isready, selected_eq begin
-    #     processing = true
-    #     # fips_data[!] = DataFrame() # with the [!] suffix, the reactive variable changes in value but the update is not sent to the browser
-    #     # for m in selected_metrics
-    #     #     # the lttb function resamples the data in the array to a set of N points
-    #     #     idx, resampled = lttb(df[df.fips .== selected_fips, m], N)
-    #     #     fips_data[!, m*"_date"] = df[df.fips .== selected_fips, :date][idx]
-    #     #     fips_data[!, m] = resampled
-    #     # end
-    #     # @push fips_data # push the updated data to the browser
-    #     processing = false
-    # end
-    # update the map when picking a new date or metric.
-    # @onchange isready, date, map_metric begin
-    #     @show "updating map with data from $date"
-    #     # mapcolor = df[df.date .== Date(date), map_metric]
-    # end
-    # @onchange selected_eq,isready begin
-    #     available_pixels = get_pixels(filter(x->occursin(selected_eq, x), available_eqs_jld2)[1])
-    #     notify(__model__, "Selected New Earthquake", :warning)
-    # end
 
     # when clicking on a plot, the data_click variable will be populated with the event info
     @onchange data_click begin
-        # each chart generates different event data. The map click event has a "points" field with the lat and lon
         if haskey(data_click, "points")
             lat_click, lon_click = data_click["points"][1]["lat"], data_click["points"][1]["lon"]
-            #find closest fip
-            # distances = sqrt.((soil_data.lat .- lat_click).^2 + (soil_data.lon .- lon_click).^2)
             closest_index = find_closest_eq(lat_click, lon_click, eq_lat_long)
             selected_eq = available_eqs[closest_index]
-        # else
-            # clicking on a line chart generates event data with x and y coordinates of the clicked point
-            # date = string(Date(unix2datetime(data_click["cursor"]["x"] / 1000))) # the x point data is in Unix time
-            # date_data = df[(df.date .== date) .& (df.fips .== selected_fips), metrics] |> Matrix |> vec
-            # closest_index = argmin(abs.(date_data .- data_click["cursor"]["y"]))
-            # map_metric = metrics[closest_index]
         end
 
     end
-    # @onchange isready begin
-    #     notify(__model__, "Run locally to work with the full dataset. See README on GitHub for instructions.", :warning)
-    # end
 end
 
 # enable event detection in charts. Moreover, you'll need to add the class `sync_data` to the `plotly`

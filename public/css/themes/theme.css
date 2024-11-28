@@ -1,21 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
   :root.stipple-core{
-    --st-color-primary: #031103;
-    --st-color-neutral: #a1afce4d;
-    --st-color-field-border: #a1afce4d;
+    --st-color-primary: #030B03;
+    --st-color-neutral: #d6d6d6;
+    --st-color-field-border: #d6d6d6;
     --st-color-field-text-dimmed: #fffffffa;
-    --st-color-field-background-dimmed: #0000002a;
+    --st-color-field-background-dimmed: #00000010;
     --st-shadow-color: #00000061;
   }
   :root.stipple-core{
-    --st-dashboard-bg-0: #101928;
-    --st-dashboard-bg-1: #1d2d44;
-    --st-dashboard-bg-2: #26374f;
+    --st-dashboard-bg-0: #eff2f5;
+    --st-dashboard-bg-1: #ffffff;
+    --st-dashboard-bg-2: #ffffff;
   }
   :root.stipple-core{
-    --st-text-1: #f3f6f8;
-    --st-text-2: #d3d9e9;
-    --st-text-3: #adb4c7;
+    --st-text-1: #1a2748;
+    --st-text-2: #6b7280;
+    --st-text-3: #777f92;
     --st-font-family: Outfit;
     --st-font-size: 14px;
     --st-font-size-4xl: 2.5rem;
@@ -36,7 +36,7 @@
     box-shadow: var(--st-shadow-md);
   }
   :root.stipple-core{
-    --st-color-secondary: #5a963c;
+    --st-color-secondary: #1285f8;
     --st-color-accent: #458fe3;
     --st-color-dark: #1c1c1c;
     --st-color-info: #32cdec;
@@ -83,7 +83,7 @@
     font-size: var(--st-font-size-md);
   }
   :root.stipple-core ._genie_logo{
-    filter: var(--st-filter-dark);
+    filter: var(--st-filter-light);
   }
 
 

@@ -2,12 +2,30 @@
 <h1>Deep Earthquake Source Time Functions Using Variational Symmetric Autoencoders</h1><span id="i208">​​​​​​​</span>
 <div class="row">
     <div class="st-col st-module col-3">
-        <q-select id="i80x" v-model="selected_eq" label="Select an earthquake or click on the map" autocomplete="true" :options="available_eqs"></q-select>
-        <plotly id="igbvk" class="sync_data" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOiIkX3tlcV9sYXR9IiwibG9uIjoiJF97ZXFfbG9uZ30iLCJtb2RlIjoibWFya2VycyIsInR5cGUiOiJzY2F0dGVybWFwYm94IiwibmFtZSI6IlRyYWNlIiwibWFya2VyIjp7ImNvbG9yIjoiJF97bWFwY29sb3J9In0sInoiOiIkX3ttYXBjb2xvcn0ifSx7IngiOiIiLCJ5IjoiIiwidHlwZSI6InNjYXR0ZXIiLCJuYW1lIjoiVHJhY2UifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMCJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwidGl0bGUiOiJFYXJ0aHF1YWtlcyIsInhheGlzIjp7InNob3dncmlkIjp0cnVlLCJ0aXRsZSI6eyJ0ZXh0IjoiQXhpcyBUaXRsZSJ9fSwieWF4aXMiOnsic2hvd2dyaWQiOnRydWV9fQ=="></plotly>
-        <q-select id="iiy6w" v-model="selected_rec_pixel" label="Select a pixel to plot its receivers below" :options="available_pixels"></q-select>
-        <plotly id="i79gq" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOls0MC43MTI3NzYsMzQuMDUyMjM1XSwibG9uIjpbLTc0LjAwNTk3NCwtMTE4LjI0MzY4NV0sIm1vZGUiOiJtYXJrZXJzIiwidHlwZSI6InNjYXR0ZXJtYXBib3giLCJuYW1lIjoiVHJhY2UifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjozOCwibG9uIjoiMzUifSwiem9vbSI6IjAifSwibWFyZ2luIjp7InIiOjAsInQiOjAsImIiOjAsImwiOjB9LCJ0aXRsZSI6IlJlY2VpdmVycyIsInhheGlzIjp7InNob3dncmlkIjp0cnVlfSwieWF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJwYXBlcl9iZ2NvbG9yIjoiI2ZmZmZmZiJ9"></plotly>
-        <h6 id="iuttf">About&nbsp;<br></h6>
-        <p id="iadug">While conventional methods typically employ convolutional models to differentiate source and path effects, our approach relies on Symmetric Autoencoding (SymAE). SymAE enables us to examine the spatial patterns in earthquake data and effectively separate slow-scale source effects from fast-scale path effects. This separation helps us to determine earthquake source parameters more accurately, without being influenced by path effects.</p>
+        <q-select id="i80x" v-model="selected_eq" label="Select an earthquake or click on the map to begin" autocomplete="true" :options="available_eqs"></q-select>
+        <plotly id="igbvk" class="sync_data" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOiIkX3tlcV9sYXR9IiwibG9uIjoiJF97ZXFfbG9uZ30iLCJtb2RlIjoibWFya2VycyIsInR5cGUiOiJzY2F0dGVybWFwYm94IiwibmFtZSI6IlRyYWNlIiwibWFya2VyIjp7ImNvbG9yIjoiJF97bWFwY29sb3J9In0sInoiOiIkX3ttYXBjb2xvcn0ifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMSJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwieGF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJ5YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX19"></plotly>
+        <q-select id="iiy6w" v-model="selected_rec_pixel" label="Select a pixel to plot the corresponding receivers" :options="available_pixels"></q-select>
+        <plotly id="i79gq" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOls0MC43MTI3NzYsMzQuMDUyMjM1XSwibG9uIjpbLTc0LjAwNTk3NCwtMTE4LjI0MzY4NV0sIm1vZGUiOiJtYXJrZXJzIiwidHlwZSI6InNjYXR0ZXJtYXBib3giLCJuYW1lIjoiVHJhY2UifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjozOCwibG9uIjoiMzUifSwiem9vbSI6IjEifSwibWFyZ2luIjp7InIiOjAsInQiOjAsImIiOjAsImwiOjB9LCJ4YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInlheGlzIjp7InNob3dncmlkIjp0cnVlfSwicGFwZXJfYmdjb2xvciI6IiNmZmZmZmYifQ=="></plotly>
+        <header>
+            <h1>Variational Symmetric Autoencoders</h1>
+        </header>
+        <div class="row">
+            <div class="col-9 flex">
+                <div class="st-module">
+                    <p id="iadug">While conventional methods typically employ convolutional models to differentiate source and path effects, our approach relies on Symmetric Autoencoding (SymAE). SymAE enables us to examine the spatial patterns in earthquake data and effectively separate slow-scale source effects from fast-scale path effects. This separation helps us to determine earthquake source time functions more accurately, without being influenced by path effects.<br><br>On extracting coherent seismic wavefield using variational symmetric autoencoders<br data-cke-eol="1"><a data-cke-saved-href="http://https://doi.org/10.48550/arXiv.2411.15613" href="http://https://doi.org/10.48550/arXiv.2411.15613">https://doi.org/10.48550/arXiv.2411.15613</a><br>​​​​​​​Learning earthquake sources using symmetric autoencoders<br><a data-cke-saved-href="https://doi.org/10.48550/arXiv.2304.02404" href="https://doi.org/10.48550/arXiv.2304.02404">https://doi.org/10.48550/arXiv.2304.02404</a><br><br><br></p>
+                </div>
+            </div>
+            <div class="col-3 col-sm flex">
+                <div class="st-module">
+                    <q-img id="iqf9z" src="https://iisc.ac.in/wp-content/uploads/2020/08/IISc_Master_Seal_Reverse.jpg"></q-img>
+                </div>
+            </div>
+        </div>
+        <footer class="st-footer">
+            <p><strong>Warning:</strong> The earthquake source time functions shown are generated using a trained deep neural network. Interpret results with caution.</p>
+        </footer>
+        <q-img id="ii9tk" src="&quot;data/iisc_logo.png&quot;"></q-img>
+        <q-img id="iywfl" src="data/iisc_logo.pdf"></q-img>
     </div>
     <div class="st-col col-12 col-sm st-module">
         <st-tabs id="i3y3w" class="bg-primary text-white shadow-2" v-model="selected_tab" :ids="tab_ids" :labels="tab_labels"></st-tabs>
@@ -17,7 +35,24 @@
                 <plotly id="ir2v" :data="traces" config="e30=" :layout="stf_layout"></plotly>
             </q-tab-panel>
             <q-tab-panel id="i7yf" name="tab_usvs">
-                <plotly id="i3et-2" :data="traces_usvs" config="e30=" :layout="usvs_layout"></plotly>
+                <div class="row">
+                    <div class="col-12 col-sm flex">
+                        <div class="st-module">
+                            <header>
+                                <h1><span id="i78lv">Envelope Stacking</span></h1>
+                            </header>
+                            <plotly id="i6iah" :data="traces_raw" config="e30=" :layout="usvs_layout"></plotly>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm flex">
+                        <div class="st-module">
+                            <header>
+                                <h1><span id="imyio">Symmetric Autoencoders</span><span id="iclnh"></span></h1>
+                            </header>
+                            <plotly id="iy9fh" :data="traces_usvs" config="e30=" :layout="usvs_layout"></plotly>
+                        </div>
+                    </div>
+                </div>
             </q-tab-panel>
         </q-tab-panels>
     </div>
