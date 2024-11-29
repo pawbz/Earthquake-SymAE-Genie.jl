@@ -3,9 +3,9 @@
 <div class="row">
     <div class="st-col st-module col-3">
         <q-select id="i80x" v-model="selected_eq" label="Select an earthquake or click on the map to begin" autocomplete="true" :options="available_eqs"></q-select>
-        <plotly id="igbvk" class="sync_data" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOiIkX3tlcV9sYXR9IiwibG9uIjoiJF97ZXFfbG9uZ30iLCJtb2RlIjoibWFya2VycyIsInR5cGUiOiJzY2F0dGVybWFwYm94IiwibmFtZSI6IlRyYWNlIiwibWFya2VyIjp7ImNvbG9yIjoiJF97bWFwY29sb3J9In0sInoiOiIkX3ttYXBjb2xvcn0ifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMSJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwieGF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJ5YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX19"></plotly>
+        <plotly id="igbvk" class="sync_data" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMSJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwieGF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJ5YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInNob3dsZWdlbmQiOmZhbHNlfQ==" :data="eq_location_traces"></plotly>
         <q-select id="iiy6w" v-model="selected_rec_pixel" label="Select a pixel to plot the corresponding receivers" :options="available_pixels"></q-select>
-        <plotly id="i79gq" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOls0MC43MTI3NzYsMzQuMDUyMjM1XSwibG9uIjpbLTc0LjAwNTk3NCwtMTE4LjI0MzY4NV0sIm1vZGUiOiJtYXJrZXJzIiwidHlwZSI6InNjYXR0ZXJtYXBib3giLCJuYW1lIjoiVHJhY2UifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjozOCwibG9uIjoiMzUifSwiem9vbSI6IjEifSwibWFyZ2luIjp7InIiOjAsInQiOjAsImIiOjAsImwiOjB9LCJ4YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInlheGlzIjp7InNob3dncmlkIjp0cnVlfSwicGFwZXJfYmdjb2xvciI6IiNmZmZmZmYifQ=="></plotly>
+        <plotly id="i79gq" data="W3siZ2J0eXBlIjoiU2NhdHRlciBNYXBib3giLCJsYXQiOiIkX3tlcV9yZWNlaXZlcl9sYXR9IiwibG9uIjoiJF97ZXFfcmVjZWl2ZXJfbG9ufSIsIm1vZGUiOiJtYXJrZXJzIiwidHlwZSI6InNjYXR0ZXJtYXBib3giLCJuYW1lIjoiVHJhY2UiLCJob3ZlcmluZm8iOiIkX3tlcV9yZWNlaXZlcl9uYW1lc30iLCJtYXJrZXIiOnsiY29sb3IiOiIjMDAwMDAwIn0sInRleHQiOiIkX3tlcV9yZWNlaXZlcl9uYW1lc30ifV0=" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjozOCwibG9uIjoiMzUifSwiem9vbSI6IjEifSwibWFyZ2luIjp7InIiOjAsInQiOjAsImIiOjAsImwiOjB9LCJ4YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInlheGlzIjp7InNob3dncmlkIjp0cnVlfSwic2hvd2xlZ2VuZCI6ZmFsc2V9"></plotly>
         <header>
             <h1>Variational Symmetric Autoencoders</h1>
         </header>
@@ -34,25 +34,8 @@
                 <q-select id="io01" v-model="selected_pixel" label="Select a pixel" :options="available_pixels"></q-select>
                 <plotly id="ir2v" :data="traces" config="e30=" :layout="stf_layout"></plotly>
             </q-tab-panel>
-            <q-tab-panel id="i7yf" name="tab_usvs">
-                <div class="row">
-                    <div class="col-12 col-sm flex">
-                        <div class="st-module">
-                            <header>
-                                <h1><span id="i78lv">Envelope Stacking</span></h1>
-                            </header>
-                            <plotly id="i6iah" :data="traces_raw" config="e30=" :layout="usvs_layout"></plotly>
-                        </div>
-                    </div>
-                    <div class="col-12 col-sm flex">
-                        <div class="st-module">
-                            <header>
-                                <h1><span id="imyio">Symmetric Autoencoders</span><span id="iclnh"></span></h1>
-                            </header>
-                            <plotly id="iy9fh" :data="traces_usvs" config="e30=" :layout="usvs_layout"></plotly>
-                        </div>
-                    </div>
-                </div>
+            <q-tab-panel id="ih08b" name="tab_usvs">
+                <plotly id="ij0ri" :data="traces_usvs" config="e30=" :layout="usvs_layout"></plotly>
             </q-tab-panel>
         </q-tab-panels>
     </div>

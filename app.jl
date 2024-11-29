@@ -2,25 +2,36 @@
 using GenieFramework, JLD2, DataFrames, CSV, StatsBase, PlotlyBase, DSP, ColorSchemes, Healpix, Random, Colors
 @genietools
 
-
-
 usvs_color_scheme = ColorSchemes.darkrainbow
 max_pixels = 60
 
-const model_filename = "20240912T190943289"
-available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", model_filename), join=true))
-# model_filename = "para-2024-09-12T19:09:43.289-batchsize=16_beta=1.0_network_type=conv_nhidden_dense=1024_nlayer_dense=3_nsteps=100_nt=256_ntau=19_p=30_q=30_spatial_transformer_gamma=1000.0_transformer=spatial.jld2"
+# const _model_filename = "20240912T190943289"
+const _model_filename = "20241124T150609280"
+const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
 
-function generate_random_lat_long(n)
-    latitudes = rand(-90.0:0.1:90.0, n)
-    longitudes = rand(-180.0:0.1:180.0, n)
-    return [(lat, lon) for (lat, lon) in zip(latitudes, longitudes)]
-end
+# function load_eq_lat_long(available_eqs_jld2)
+#     latv = Vector{Float32}()
+#     lonv = Vector{Float32}()
+#     depthv = Vector{Float32}()
+#     for eqfile in available_eqs_jld2
+#         eqfile = replace(eqfile, "$(_model_filename)" => "lat_lon_dep_data", ".jld2" => "_data.jld2")
+#         eqfile = JLD2.jldopen(eqfile)
+#         @show keys(eqfile)
+#         lat = eqfile["latitude"]
+#         lon = eqfile["longitude"]
+#         depth = eqfile["depth"]
+#         JLD2.close(eqfile)
+#         push!(latv, lat)
+#         push!(lonv, lon)
+#         push!(depthv, depth)
+#     end
+#     return latv, lonv, depthv
+# end
 
-eq_lat_long = generate_random_lat_long(length(available_eqs_jld2))
+# const _eq_lat, _eq_long, _eq_depth = load_eq_lat_long(_available_eqs_jld2)
 
-function find_closest_eq(lat, lon, eq_lat_long)
-    distances = [sqrt((lat - eq[1])^2 + (lon - eq[2])^2) for eq in eq_lat_long]
+function find_closest_eq(lat, lon, eq_loc_data)
+    distances = [sqrt((lat - eq_loc["latitude"])^2 + (lon - eq_loc["longitude"])^2) for eq_loc in eq_loc_data]
     return argmin(distances)
 end
 
@@ -42,45 +53,70 @@ envelope(x) = abs.(hilbert(x))
 tgrid = collect(1:256)
 stf = range(0.0, stop=1.0, length=256)
 
+function read_all_JLD2_files(available_eqs_jld2)
+    eqs = []
+    for eqfile in available_eqs_jld2
+        eqdat = JLD2.jldopen(eqfile)
+        push!(eqs, eqdat)
+    end
+    return eqs
+end
 
-function get_pixels(jld2file)
-    eqfile = JLD2.jldopen(jld2file)
+function read_all_loc_JLD2_files(available_eqs_jld2)
+    eqs = []
+    for eqfile in available_eqs_jld2
+        eqfile = replace(eqfile, "$(_model_filename)" => "lat_lon_dep_data", ".jld2" => "_data.jld2")
+        eqfile = JLD2.jldopen(eqfile)
+        push!(eqs, eqfile)
+    end
+    return eqs
+end
+
+function get_min_KL_instance_id(jld2fileindex, eq_data)
+    eqfile = eq_data[jld2fileindex]
+    k = keys(eqfile)
+    KLpixel = filter(x -> occursin("KL", x), collect(k))[1]
+    id = argmin(eqfile[KLpixel][end, :])
+    return id
+end
+
+function get_pixels(jld2fileindex, eq_data)
+    eqfile = eq_data[jld2fileindex]
     k = keys(eqfile)
     pixels = filter(x -> tryparse(Int, x) !== nothing, collect(k))
-    JLD2.close(eqfile)
     return pixels
 end
-function get_stf_bundle(jld2file, selected_pixels)
-    eqfile = JLD2.jldopen(jld2file)
+function get_stf_bundle(jld2fileindex, eq_data, selected_pixels)
+    eqfile = eq_data[jld2fileindex]
     stf = eqfile["$(selected_pixels)"]
-    JLD2.close(eqfile)
     return stf
 end
-# pixels = get_pixels(available_eqs_jld2[2])
-# println(pixels)
-# get_stf(available_eqs_jld2[2], pixels[1])
-# eqfile = JLD2.jldopen(joinpath("data/saved_nuisance_optimizers_1/P_new", "optimal_nuisance_results_bin_max_receivers-0.1-20130524_145631_okt-P-2.jld2"))
-# get_pixels(filter(x -> occursin(last(jld2_to_eqname.(available_eqs_jld2)), x), available_eqs_jld2)[1])
-# in the reactive code block, we'll implement the logic to handle user interaction
 
-
-const _available_eqs = jld2_to_eqname.(available_eqs_jld2)
-const _eq_lat = [eq[1] for eq in eq_lat_long]
-const _eq_long = [eq[2] for eq in eq_lat_long]
+const _available_eqs = jld2_to_eqname.(_available_eqs_jld2)
+const _eq_data = read_all_JLD2_files(_available_eqs_jld2)
+const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
 @app begin
     @out available_eqs = _available_eqs
-    @out eq_lat = _eq_lat
-    @out eq_long = _eq_long
     @out eq_lat_selected = 0.0
     @out eq_long_selected = 0.0
     @in selected_eq = string(sample(_available_eqs))
     @out available_pixels = ["",]
     @onchange selected_eq begin
-        # notify(__model__, "Selected Earthquake $selected_eq")
-        available_pixels = get_pixels(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1])
-        eq_lat_selected = eq_lat[findfirst(x -> x == selected_eq, available_eqs)]
-        eq_long_selected = eq_long[findfirst(x -> x == selected_eq, available_eqs)]
+        jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
+        available_pixels = get_pixels(jld_file_index, _eq_data)
+        eq_lat_selected = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["latitude"]
+        eq_long_selected = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["longitude"]
     end
+
+@out eq_location_traces = [PlotlyBase.scattermapbox(    
+                    lat=[eqloc["latitude"]],
+                    lon=[eqloc["longitude"]],
+                    mode="markers",
+                    size=10,
+                    marker=attr(size=10, color=eqloc["depth"], linecolor="black", colorscale="Blues", cmin=300, cmax=700),
+                    name="",
+                    hovertext=eqname) for (eqname, eqloc) in zip(_available_eqs, _eq_loc_data)]
+
 
     @out tab_ids = ["tab_stf", "tab_usvs"]
     @out tab_labels = ["Single Pixel", "All Pixels"]
@@ -96,8 +132,9 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
     # @out traces = [scatter(x=collect(1:10), y=randn(10)), scatter(x=collect(1:10), y=randn(10))]
     @out traces = [scatter()]
     @onchange selected_eq, selected_pixel begin
-        stf_bundle = get_stf_bundle(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1], selected_pixel)
-        stf = vec(mean(envelope(stf_bundle["USVS"]), dims=2))
+        jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
+        stf_bundle = get_stf_bundle(jld_file_index, _eq_data, selected_pixel)
+        stf = vec(envelope(stf_bundle["USVS"][:, get_min_KL_instance_id(jld_file_index, _eq_data)]))
         stf_std = vec(std(stf_bundle["USVS"], dims=2))
         stf_upper = stf .+ stf_std
         stf_lower = stf .- stf_std
@@ -152,27 +189,25 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
             y=0.97,                   # Vertical position (0 is bottom, 1 is top)
             font=attr(size=22)     # Customize font size if needed
         ),
-        template="plotly_dark",
+        template="plotly_white",
         height=700,
         # width=900,
         xaxis=attr(
             title="Time (s)",
             titlefont=attr(size=22),
+            font=attr(size=22),
             tickfont=attr(size=22),
             nticks=10,
             gridwidth=1,
-            font_color="black",
             range=(-50, 80),
         ),
         yaxis=attr(
-            title=attr(text="Normalized Amplitude",
-                # x=0.1,
-                # y=0.5,
-                font=attr(size=22)),
+            title="Normalized Amplitude",
+            titlefont=attr(size=22),
+            font=attr(size=22),
             tickfont=attr(size=22),
             nticks=10,
             gridwidth=1,
-            font_color="black",
             range=(0, 8),
         ),
         legend=attr(
@@ -186,23 +221,38 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
         )
     )
 
+
+    @in selected_rec_pixel = ""
+    @onchange available_pixels begin
+        selected_rec_pixel = first(available_pixels)
+    end
+    @out eq_receiver_lat = []
+    @out eq_receiver_lon = []
+    @out eq_receiver_names = []
+    @onchange selected_rec_pixel, selected_eq begin
+        eq_loc_pixel = _eq_loc_data[findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]]["$(selected_rec_pixel)"]
+        eq_receiver_lat = [eq_loc_pixel[k][1] for k in keys(eq_loc_pixel)]
+        eq_receiver_lon = [eq_loc_pixel[k][2] for k in keys(eq_loc_pixel)]
+        eq_receiver_names = [k for k in keys(eq_loc_pixel)]
+    end
+
     @out traces_usvs = [scatter()]
-    @out traces_raw = [scatter()]
     @onchange selected_eq, available_pixels, tgrid begin
-        all_pixels = get_pixels(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1])
+
+        jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
+        all_pixels = get_pixels(jld_file_index, _eq_data)
         traces_usvs[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
-        traces_raw[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
         av = 0
         av_raw = 0
         scale = 2
         sorted_pixels = sort(tryparse.(Int, all_pixels))
         npixels = length(sorted_pixels)
-        # color_samples = [get(usvs_color_scheme, i/(npixels)) for i in 0:npixels-1]
         for (ipixel, pixel) in enumerate(sorted_pixels)
             angles = broadcast(pix2angRing(Resolution(4), pixel)) do x
                 floor(Int, rad2deg(x))
             end
-            stf_bundle = get_stf_bundle(filter(x -> occursin(selected_eq, x), available_eqs_jld2)[1], string(pixel))
+            jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
+            stf_bundle = get_stf_bundle(jld_file_index, _eq_data, string(pixel))
             pixel_stf = vec(mean(envelope(stf_bundle["USVS"]), dims=2))
             pixel_raw = vec(stf_bundle["RAW"])
 
@@ -215,100 +265,93 @@ const _eq_long = [eq[2] for eq in eq_lat_long]
 
             # @show get(usvs_color_scheme, ipixel/npixels), ipixel/npixels
             push!(traces_usvs,
-            scatter(
-                x=tgrid,
-                y=pixel_stf .+ current_yoffset,
-                # line = attr(color = "white"),#hex(get(usvs_color_scheme, ipixel/npixels))),
-                fillcolor=hex(get(usvs_color_scheme, ipixel/npixels)),
-                line=attr(color="black"),#hex(get(usvs_color_scheme, ipixel/npixels))),
-                fill="tonexty",
-                mode="lines",
-                name=string(pixel, ": ", angles), 
-            ))     
+                scatter(
+                    x=tgrid,
+                    y=pixel_stf .+ current_yoffset,
+                    # line = attr(color = "white"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                    fillcolor=hex(get(usvs_color_scheme, ipixel / npixels)),
+                    line=attr(color="black"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                    fill="tonexty",
+                    mode="lines",
+                    name=string(pixel, ": ", angles),
+                    xaxis="x2", yaxis="y",
+                    legendgroup="group$ipixel",
+                ))
 
-            push!(traces_raw,
-            scatter(
-                x=tgrid,
-                y=pixel_raw .+ current_yoffset,
-                # line = attr(color = "white"),#hex(get(usvs_color_scheme, ipixel/npixels))),
-                fillcolor=hex(get(usvs_color_scheme, ipixel/npixels)),
-                line=attr(color="black"),#hex(get(usvs_color_scheme, ipixel/npixels))),
-                fill="tonexty",
-                mode="lines",
-                name=string(pixel, ": ", angles), 
-            )) 
+            push!(traces_usvs,
+                scatter(
+                    x=tgrid,
+                    y=pixel_raw .+ current_yoffset,
+                    # line = attr(color = "white"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                    fillcolor=hex(get(usvs_color_scheme, ipixel / npixels)),
+                    line=attr(color="black"),#hex(get(usvs_color_scheme, ipixel/npixels))),
+                    fill="tonexty",
+                    mode="lines",
+                    showlegend=false,
+                    name=string(pixel, ": ", angles),
+                    xaxis="x", yaxis="y",
+                    legendgroup="group$ipixel",
+                ))
         end
         last_yoffset = (scale * (32))
         av .= av ./ maximum(av) .* 2.5
         av_raw .= av_raw ./ maximum(av_raw) .* 2.5
         push!(traces_usvs,
-        scatter(
-            x=tgrid,
-            y=av .+ last_yoffset,
-            line = attr(color = "black"),
-            mode="lines",
-            name="mean",
-        ))
-        push!(traces_raw, 
-        scatter(
-            x=tgrid,
-            y=av_raw .+ last_yoffset,
-            line = attr(color = "black"),
-            mode="lines",
-            name="mean",
-        ))
-        @push traces_usvs   # Update the traces vector when all traces are generated
+            scatter(
+                x=tgrid,
+                y=av .+ last_yoffset,
+                line=attr(color="black"),
+                mode="lines",
+                xaxis="x2", yaxis="y",
+                name="mean",
+                legendgroup="group0",
+            ))
+        push!(traces_usvs,
+            scatter(
+                x=tgrid,
+                y=av_raw .+ last_yoffset,
+                line=attr(color="black"),
+                mode="lines",
+                showlegend=false,
+                xaxis="x", yaxis="y",
+                name="mean",
+                legendgroup="group0",
+            ))
+        @push traces_usvs # Update the traces vector when all traces are generated
     end
 
 
     @out usvs_layout = PlotlyBase.Layout(
-        showlegend=true,
-        # template="plotly_dark",
-        font_family="Computer Modern",
-        font_color="black",
-        font=attr(family="Computer Modern", size=22),
-        width = 575,
-        height = 1200,
-        yaxis_showgrid=false,
-        xaxis_range=(-50, 60),
+        template="plotly_white",
+        height=1200,
+        title="Raw Envelope Stacking Vs. SymAE Source Time Functions",
+        yaxis_anchor="x",
+        yaxis=attr(showgrid=false, showticklabels=false),
         xaxis=attr(
-            title="Time (s)",
-            standoff=0,  # Distance from the axis
+            titlefont=attr(size=22),
+            font=attr(size=22),
             tickfont=attr(size=22),
-            nticks=10,
-            gridwidth=1,
-            gridcolor="Gray",
-            font_family="Computer Modern",
-            font_color="black",
-            # xaxis_range = (-50, 100),
-        ),
-        title=attr(
-            font=attr(size=30),
-            #text = "$(eqname)",
-            x=0.5,  # Center title horizontally
-            xanchor="center",
-            y=0.95,  # Position title closer to the top
-            yanchor="top"
-        ),
-        # title=attr(text=eqname,font = attr(size = 30), x=-100,),
-        yaxis=attr(showticklabels=false),
-        legend=attr(font=attr(size=18)),
-        legendgroup="group1",
-        margin=attr(b=150),
+            range=(-50, 60),
+            domain=[0, 0.48],
+            showgrid=true,
+            title="Time (s)"),
+        xaxis2=attr(
+            titlefont=attr(size=22),
+            font=attr(size=22),
+            tickfont=attr(size=22),
+            range=(-50, 60),
+            showgrid=true,
+            domain=[0.52, 1],
+            title="Time (s)"),
     )
 
-    @in selected_rec_pixel = ""
-    @onchange available_pixels begin
-        selected_rec_pixel = first(available_pixels)
-    end
     @out mapcolor = []
     @in data_click = Dict{String,Any}()  # data from map click event
-
     # when clicking on a plot, the data_click variable will be populated with the event info
     @onchange data_click begin
         if haskey(data_click, "points")
             lat_click, lon_click = data_click["points"][1]["lat"], data_click["points"][1]["lon"]
-            closest_index = find_closest_eq(lat_click, lon_click, eq_lat_long)
+            closest_index = find_closest_eq(lat_click, lon_click, _eq_loc_data)
             selected_eq = available_eqs[closest_index]
         end
 
