@@ -10,7 +10,7 @@ const _model_filename = "20240912T190943289"
 # const _model_filename = "20241124T150609280"
 
 const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
-
+a=jldopen(_available_eqs_jld2[31])
 # function load_eq_lat_long(available_eqs_jld2)
 #     latv = Vector{Float32}()
 #     lonv = Vector{Float32}()
@@ -91,7 +91,7 @@ end
 function get_stf_traces(selected_eq, selected_pixel)
     jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
         stf_bundle = _eq_data[jld_file_index]["$(string(selected_pixel))"]
-        stf = (envelope(stf_bundle["USVS"][:, get_min_KL_instance_id(jld_file_index, _eq_data)]))
+        stf = dropdims(mean(envelope(stf_bundle["USVS"][:, :]), dims=2), dims=2)
         stf_std = dropdims(std(stf_bundle["USVS"], dims=2), dims=(2))
         stf_upper = stf .+ stf_std
         stf_lower = stf .- stf_std
@@ -280,7 +280,7 @@ const _usvs_layout = PlotlyBase.Layout(
             jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
             stf_bundle = _eq_data[jld_file_index]["$(string(pixel))"]
 
-            pixel_stf = envelope(stf_bundle["USVS"][:, get_min_KL_instance_id(jld_file_index, _eq_data)])
+            pixel_stf = dropdims(mean(envelope(stf_bundle["USVS"]), dims=2), dims=2)
             # pixel_stf = vec(mean(envelope(stf_bundle["USVS"]), dims=2))
             pixel_raw = stf_bundle["RAW"]
 
