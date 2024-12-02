@@ -6,7 +6,9 @@ const _usvs_color_scheme = ColorSchemes.darkrainbow
 const _max_pixels = 60
 
 const _model_filename = "20240912T190943289"
+# const _model_filename = "20241122T122806149"
 # const _model_filename = "20241124T150609280"
+
 const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
 
 # function load_eq_lat_long(available_eqs_jld2)
@@ -90,7 +92,7 @@ function get_stf_traces(selected_eq, selected_pixel)
     jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
         stf_bundle = _eq_data[jld_file_index]["$(string(selected_pixel))"]
         stf = (envelope(stf_bundle["USVS"][:, get_min_KL_instance_id(jld_file_index, _eq_data)]))
-        stf_std = dropdims(std(stf_bundle["USVS"], dims=2), dims=(2,3))
+        stf_std = dropdims(std(stf_bundle["USVS"], dims=2), dims=(2))
         stf_upper = stf .+ stf_std
         stf_lower = stf .- stf_std
 
