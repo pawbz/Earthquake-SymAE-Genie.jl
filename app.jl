@@ -10,7 +10,7 @@ const _model_filename = "20240912T190943289"
 # const _model_filename = "20241124T150609280"
 
 const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
-a=jldopen(_available_eqs_jld2[31])
+a = jldopen(_available_eqs_jld2[31])
 # function load_eq_lat_long(available_eqs_jld2)
 #     latv = Vector{Float32}()
 #     lonv = Vector{Float32}()
@@ -90,54 +90,54 @@ end
 
 function get_stf_traces(selected_eq, selected_pixel)
     jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
-        stf_bundle = _eq_data[jld_file_index]["$(string(selected_pixel))"]
-        stf = dropdims(mean(envelope(stf_bundle["USVS"][:, :]), dims=2), dims=2)
-        stf_std = dropdims(std(stf_bundle["USVS"], dims=2), dims=(2))
-        stf_upper = stf .+ stf_std
-        stf_lower = stf .- stf_std
+    stf_bundle = _eq_data[jld_file_index]["$(string(selected_pixel))"]
+    stf = dropdims(mean(envelope(stf_bundle["USVS"][:, :]), dims=2), dims=2)
+    stf_std = dropdims(std(stf_bundle["USVS"], dims=2), dims=(2))
+    stf_upper = stf .+ stf_std
+    stf_lower = stf .- stf_std
 
-        raw_env_mean = (stf_bundle["RAW"])
-        raw_env_upper = (stf_bundle["RAW_upper_bound"])
-        raw_env_lower = (stf_bundle["RAW_lower_bound"])
+    raw_env_mean = (stf_bundle["RAW"])
+    raw_env_upper = (stf_bundle["RAW_upper_bound"])
+    raw_env_lower = (stf_bundle["RAW_lower_bound"])
 
-        # traces[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
-        traces = [
-            scatter(
-                x=_tgrid,
-                y=stf,
-                line=attr(color="rgb(0,0,128)"),
-                name="Source Time Function Using Variational SymAE",
-                mode="lines",
-                legendgroup="group1",
-            ),
-            scatter(
-                x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
-                y=vcat(stf_upper, reverse(stf_lower)), # upper, then lower reversed
-                fill="toself",
-                fillcolor="rgba(0,0,128,0.2)",
-                line=attr(color="rgba(0,0,0,0)"),
-                hoverinfo="skip",
-                legendgroup="group1",
-                showlegend=false
-            ),
-            scatter(x=_tgrid,
-                y=raw_env_mean,
-                line=attr(color="rgb(139,0,0)"),
-                legendgroup="group2",
-                name="Raw Displacement Seismogram Envelope",
-                mode="lines"),
-            scatter(
-                x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
-                y=vcat(raw_env_upper, reverse(raw_env_lower)), # upper, then lower reversed
-                fill="toself",
-                fillcolor="rgba(139,0,0,0.2)",
-                line=attr(color="rgba(0,0,0,0)"),
-                legendgroup="group2",
-                hoverinfo="skip",
-                showlegend=false
-            )
-        ]
-        return traces
+    # traces[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
+    traces = [
+        scatter(
+            x=_tgrid,
+            y=stf,
+            line=attr(color="rgb(0,0,128)"),
+            name="Source Time Function Using Variational SymAE",
+            mode="lines",
+            legendgroup="group1",
+        ),
+        scatter(
+            x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
+            y=vcat(stf_upper, reverse(stf_lower)), # upper, then lower reversed
+            fill="toself",
+            fillcolor="rgba(0,0,128,0.2)",
+            line=attr(color="rgba(0,0,0,0)"),
+            hoverinfo="skip",
+            legendgroup="group1",
+            showlegend=false
+        ),
+        scatter(x=_tgrid,
+            y=raw_env_mean,
+            line=attr(color="rgb(139,0,0)"),
+            legendgroup="group2",
+            name="Raw Displacement Seismogram Envelope",
+            mode="lines"),
+        scatter(
+            x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
+            y=vcat(raw_env_upper, reverse(raw_env_lower)), # upper, then lower reversed
+            fill="toself",
+            fillcolor="rgba(139,0,0,0.2)",
+            line=attr(color="rgba(0,0,0,0)"),
+            legendgroup="group2",
+            hoverinfo="skip",
+            showlegend=false
+        )
+    ]
+    return traces
 end
 
 const _available_eqs = jld2_to_eqname.(_available_eqs_jld2)
@@ -222,7 +222,7 @@ const _usvs_layout = PlotlyBase.Layout(
         lon=[eqloc["longitude"]],
         mode="markers",
         size=10,
-        marker=attr(size=10, color=eqloc["depth"], linecolor="black", colorscale="Blues", cmin=300, cmax=700),
+        marker=attr(size=10, color=[eqloc["depth"]], autocolorscale=false, colorscale="Reds", cmin=300, cmax=600),
         name="",
         hovertext=eqname) for (eqname, eqloc) in zip(_available_eqs, _eq_loc_data)]
 
@@ -241,25 +241,42 @@ const _usvs_layout = PlotlyBase.Layout(
     # @out traces = [scatter(x=collect(1:10), y=randn(10)), scatter(x=collect(1:10), y=randn(10))]
     @out traces = [scatter()]
     @onchange selected_eq, selected_pixel begin
-        traces = get_stf_traces(selected_eq, selected_pixel) 
+        traces = get_stf_traces(selected_eq, selected_pixel)
     end
 
     @out usvs_layout = _usvs_layout
     @out stf_layout = _stf_layout
 
 
-    @in selected_rec_pixel = ""
+    @in selected_rec_pixel = []
     @onchange available_pixels begin
-        selected_rec_pixel = first(available_pixels)
+        selected_rec_pixel = available_pixels
     end
-    @out eq_receiver_lat = []
-    @out eq_receiver_lon = []
-    @out eq_receiver_names = []
+    @out traces_receiver = [PlotlyBase.scattermapbox()]
     @onchange selected_rec_pixel, selected_eq begin
-        eq_loc_pixel = _eq_loc_data[findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]]["$(selected_rec_pixel)"]
-        eq_receiver_lat = [eq_loc_pixel[k][1] for k in keys(eq_loc_pixel)]
-        eq_receiver_lon = [eq_loc_pixel[k][2] for k in keys(eq_loc_pixel)]
-        eq_receiver_names = [k for k in keys(eq_loc_pixel)]
+        jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
+        all_pixels = get_pixels(jld_file_index, _eq_data)
+        sorted_pixels = sort(tryparse.(Int, all_pixels))
+        ipixels = map(x -> findfirst(y -> y == x, string.(sorted_pixels)), selected_rec_pixel)
+        eq_receiver_lat = []
+        eq_receiver_lon = []
+        eq_receiver_names = []
+        eq_receiver_colors = []
+        for (ipixel, pixel) in zip(ipixels, selected_rec_pixel)
+            eq_loc_pixel = _eq_loc_data[findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]]["$(pixel)"]
+            push!(eq_receiver_lat, [eq_loc_pixel[k][1] for k in keys(eq_loc_pixel)]...)
+            push!(eq_receiver_lon, [eq_loc_pixel[k][2] for k in keys(eq_loc_pixel)]...)
+            push!(eq_receiver_names, ["pixel $pixel: " * k for k in keys(eq_loc_pixel)]...)
+            push!(eq_receiver_colors, ["#" * hex(get(_usvs_color_scheme, ipixel / length(sorted_pixels))) for i in 1:length(keys(eq_loc_pixel))]...)
+        end
+        traces_receiver = [PlotlyBase.scattermapbox(
+            lat=eq_receiver_lat,
+            lon=eq_receiver_lon,
+            mode="markers",
+            size=10,
+            marker=attr(size=10, autocolorscale=false, cauto=false, color=eq_receiver_colors),
+            name="",
+            hovertext=eq_receiver_names)]
     end
 
     @out traces_usvs = [scatter()]
