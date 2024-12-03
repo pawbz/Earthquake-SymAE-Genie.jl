@@ -274,7 +274,7 @@ const _usvs_layout = PlotlyBase.Layout(
             lon=eq_receiver_lon,
             mode="markers",
             size=10,
-            marker=attr(size=10, autocolorscale=false, cauto=false, color=eq_receiver_colors),
+            marker=attr(size=6, autocolorscale=false, cauto=false, color=eq_receiver_colors),
             name="",
             hovertext=eq_receiver_names)]
     end
