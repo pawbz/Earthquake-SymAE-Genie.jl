@@ -263,11 +263,14 @@ const _usvs_layout = PlotlyBase.Layout(
         eq_receiver_names = []
         eq_receiver_colors = []
         for (ipixel, pixel) in zip(ipixels, selected_rec_pixel)
-            eq_loc_pixel = _eq_loc_data[findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]]["$(pixel)"]
-            push!(eq_receiver_lat, [eq_loc_pixel[k][1] for k in keys(eq_loc_pixel)]...)
-            push!(eq_receiver_lon, [eq_loc_pixel[k][2] for k in keys(eq_loc_pixel)]...)
-            push!(eq_receiver_names, ["pixel $pixel: " * k for k in keys(eq_loc_pixel)]...)
-            push!(eq_receiver_colors, ["#" * hex(get(_usvs_color_scheme, ipixel / length(sorted_pixels))) for i in 1:length(keys(eq_loc_pixel))]...)
+            println(pixel)
+            if (pixel !== nothing)
+                eq_loc_pixel = _eq_loc_data[findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]]["$(pixel)"]
+                push!(eq_receiver_lat, [eq_loc_pixel[k][1] for k in keys(eq_loc_pixel)]...)
+                push!(eq_receiver_lon, [eq_loc_pixel[k][2] for k in keys(eq_loc_pixel)]...)
+                push!(eq_receiver_names, ["pixel $pixel: " * k for k in keys(eq_loc_pixel)]...)
+                push!(eq_receiver_colors, ["#" * hex(get(_usvs_color_scheme, ipixel / length(sorted_pixels))) for i in 1:length(keys(eq_loc_pixel))]...)
+            end
         end
         traces_receiver = [PlotlyBase.scattermapbox(
             lat=eq_receiver_lat,
