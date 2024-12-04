@@ -389,5 +389,5 @@ end
 @mounted watchplots()
 
 # declare a route at / that'll render the HTML
-@page("/", "app.jl.html")
+@page("/", "app.jl.html", layout = Stipple.ReactiveTools.DEFAULT_LAYOUT(title = "EQ SymAE"))
 
