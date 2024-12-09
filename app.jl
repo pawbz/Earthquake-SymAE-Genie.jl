@@ -1,6 +1,35 @@
 # the app.jl file is the main entry point to the application. It is a bridge between the UI and the data processing logic.
 using GenieFramework, JLD2, DataFrames, CSV, StatsBase, PlotlyBase, DSP, ColorSchemes, Healpix, Random, Colors
+using Dates
 @genietools
+
+# read background events
+_background_events = CSV.read("data/deep_events_after2002_400km+.txt", DataFrame; delim='|')
+
+function filter_background_events(df::DataFrame, given_date::Date, lat, lon)
+    # Ensure the date column is parsed as DateTime type
+    df.event_date = DateTime.(df[!, " Time "])
+
+    df.latitude = df[!, " Latitude "]
+    df.longitude = df[!, " Longitude "]
+    # Define the date range
+    start_date = given_date - Year(100)
+    end_date = given_date + Year(100)
+
+    # Define the latitude and longitude range
+    d = 10
+    lat_min = lat - d
+    lat_max = lat + d
+    lon_min = lon - d
+    lon_max = lon + d
+
+    # Filter the DataFrame
+    filtered_df = filter(row -> row.event_date >= start_date && row.event_date <= end_date &&
+                                    row.latitude >= lat_min && row.latitude <= lat_max &&
+                                    row.longitude >= lon_min && row.longitude <= lon_max, df)
+
+    return filtered_df
+end
 
 const _usvs_color_scheme = ColorSchemes.darkrainbow
 const _max_pixels = 60
@@ -9,28 +38,12 @@ const _model_filename = "20240912T190943289"
 # const _model_filename = "20241122T122806149"
 # const _model_filename = "20241124T150609280"
 
-const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
-a = jldopen(_available_eqs_jld2[31])
-# function load_eq_lat_long(available_eqs_jld2)
-#     latv = Vector{Float32}()
-#     lonv = Vector{Float32}()
-#     depthv = Vector{Float32}()
-#     for eqfile in available_eqs_jld2
-#         eqfile = replace(eqfile, "$(_model_filename)" => "lat_lon_dep_data", ".jld2" => "_data.jld2")
-#         eqfile = JLD2.jldopen(eqfile)
-#         @show keys(eqfile)
-#         lat = eqfile["latitude"]
-#         lon = eqfile["longitude"]
-#         depth = eqfile["depth"]
-#         JLD2.close(eqfile)
-#         push!(latv, lat)
-#         push!(lonv, lon)
-#         push!(depthv, depth)
-#     end
-#     return latv, lonv, depthv
-# end
 
-# const _eq_lat, _eq_long, _eq_depth = load_eq_lat_long(_available_eqs_jld2)
+
+a = "19940609"
+
+
+const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
 
 function find_closest_eq(lat, lon, eq_loc_data)
     distances = [sqrt((lat - eq_loc["latitude"])^2 + (lon - eq_loc["longitude"])^2) for eq_loc in eq_loc_data]
@@ -228,8 +241,67 @@ const _usvs_layout = PlotlyBase.Layout(
 
 
     @out tab_ids = ["tab_stf", "tab_usvs"]
+    @out tab_ids2 = ["tab_receivers", "tab_sources"]
+    @out tab_labels2 = ["Receiver Locations", "Regional Catalog Events"]
+    @in selected_tab2 = "tab_receivers"
     @out tab_labels = ["Single Pixel", "All Pixels"]
     @in selected_tab = "tab_stf"
+
+
+
+    # Create a 3D scatter plot
+    @out background_eq_traces = [PlotlyBase.scatter3d()]
+    @onchange selected_eq begin
+        given_date = Date(first(split(selected_eq, "_")), "yyyymmdd")
+        given_lat = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["latitude"]
+        given_lon = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["longitude"]
+        given_depth = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["depth"]
+        filtered_df = filter_background_events(_background_events, given_date, given_lat, given_lon)
+        latitudes = filtered_df[!, " Latitude "]
+        longitudes = filtered_df[!, " Longitude "]
+        depths = filtered_df[!, " Depth/km "]
+
+        background_eq_traces = [
+            PlotlyBase.scatter3d(
+                x=longitudes,
+                y=latitudes,
+                z=depths,
+                mode="markers",
+                name="",
+                marker=attr(size=5, color=depths, colorscale="Reds", showscale=true)
+            ),
+            PlotlyBase.scatter3d(
+                x=[given_lon],
+                y=[given_lat],
+                z=[given_depth],
+                mode="markers",
+                name="Selected Event",
+                marker=attr(size=5, color="black")
+            )
+        ]
+    end
+
+    @out background_eq_layout = PlotlyBase.Layout(
+        scene=attr(
+            xaxis=attr(title="Longitude"),
+            yaxis=attr(title="Latitude"),
+            zaxis=attr(title="Depth", autorange="reversed")
+        ),
+        legend=attr(
+            orientation="h",  # Horizontal legend
+            x=0.5,  # Center the legend horizontally
+            y=-0.2,  # Position the legend below the plot
+            xanchor="center",
+            yanchor="top"
+        ),
+        coloraxis=attr(
+            colorbar=attr(
+                x=-1.1,  # Position the colorbar to the right of the plot
+                y=0.5,  # Center the colorbar vertically
+                yanchor="middle"
+            )
+        )
+    )
 
 
 
@@ -263,7 +335,6 @@ const _usvs_layout = PlotlyBase.Layout(
         eq_receiver_names = []
         eq_receiver_colors = []
         for (ipixel, pixel) in zip(ipixels, selected_rec_pixel)
-            println(pixel)
             if (pixel !== nothing)
                 eq_loc_pixel = _eq_loc_data[findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]]["$(pixel)"]
                 push!(eq_receiver_lat, [eq_loc_pixel[k][1] for k in keys(eq_loc_pixel)]...)
@@ -389,5 +460,5 @@ end
 @mounted watchplots()
 
 # declare a route at / that'll render the HTML
-@page("/", "app.jl.html", layout = Stipple.ReactiveTools.DEFAULT_LAYOUT(title = "EQ SymAE"))
+@page("/", "app.jl.html", layout = Stipple.ReactiveTools.DEFAULT_LAYOUT(title="EQ SymAE"))
 

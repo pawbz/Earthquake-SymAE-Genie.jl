@@ -4,8 +4,16 @@
     <div class="st-col st-module col-3">
         <q-select id="i80x" v-model="selected_eq" label="Select an earthquake or click on the map to begin (hot colors correspond to deep earthquakes)" autocomplete="true" :options="available_eqs"></q-select>
         <plotly id="igbvk" class="sync_data" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMSJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwieGF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJ5YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInNob3dsZWdlbmQiOmZhbHNlfQ==" :data="eq_location_traces"></plotly>
-        <q-select id="iiy6w" v-model="selected_rec_pixel" label="Select pixels to plot the corresponding receivers" :options="available_pixels" :multiple="true" :clearable="true" :dense="false" :hide-selected="false" :lazy-rules="true"></q-select>
-        <plotly id="i79gq" :data="traces_receiver" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjozOCwibG9uIjoiMzUifSwiem9vbSI6IjEifSwibWFyZ2luIjp7InIiOjAsInQiOjAsImIiOjAsImwiOjB9LCJ4YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInlheGlzIjp7InNob3dncmlkIjp0cnVlfSwic2hvd2xlZ2VuZCI6ZmFsc2V9"></plotly>
+        <st-tabs id="ijb9d" class="bg-primary text-white shadow-2" v-model="selected_tab2" :ids="tab_ids2" :labels="tab_labels2"></st-tabs>
+        <q-tab-panels id="i4n0r" v-model="selected_tab2">
+            <q-tab-panel id="ibqf" name="tab_receivers">
+                <q-select id="i4ez" v-model="selected_rec_pixel" label="Select pixels to plot the corresponding receivers" :options="available_pixels" :multiple="true" :lazy-rules="true" :clearable="true"></q-select>
+                <plotly id="iddw" :data="traces_receiver" config="e30=" layout="eyJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJ6b29tIjoiMSIsImNlbnRlciI6eyJsb24iOi05MCwibGF0IjozOH19LCJ4YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInlheGlzIjp7InNob3dncmlkIjp0cnVlfSwibWFyZ2luIjp7ImIiOjAsInIiOjAsImwiOjAsInQiOiIwIn19"></plotly>
+            </q-tab-panel>
+            <q-tab-panel id="i4k2" name="tab_sources">
+                <plotly id="intq" :data="background_eq_traces" config="e30=" :layout="background_eq_layout"></plotly>
+            </q-tab-panel>
+        </q-tab-panels>
         <header>
             <h1>Variational Symmetric Autoencoders</h1>
         </header>
