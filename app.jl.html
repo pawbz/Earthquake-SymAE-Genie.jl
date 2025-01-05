@@ -4,6 +4,7 @@
     <div class="st-col st-module col-3">
         <q-select id="i80x" v-model="selected_eq" label="Select an earthquake or click on the map to begin (hot colors correspond to deep earthquakes)" autocomplete="true" :options="available_eqs"></q-select>
         <plotly id="igbvk" class="sync_data" config="eyJzY3JvbGxab29tIjp0cnVlfQ==" layout="eyJkcmFnbW9kZSI6Inpvb20iLCJtYXBib3giOnsic3R5bGUiOiJvcGVuLXN0cmVldC1tYXAiLCJjZW50ZXIiOnsibGF0IjoiMzgiLCJsb24iOiIzNSJ9LCJ6b29tIjoiMSJ9LCJtYXJnaW4iOnsiciI6IjAiLCJ0IjowLCJiIjowLCJsIjowfSwieGF4aXMiOnsic2hvd2dyaWQiOnRydWV9LCJ5YXhpcyI6eyJzaG93Z3JpZCI6dHJ1ZX0sInNob3dsZWdlbmQiOmZhbHNlfQ==" :data="eq_location_traces"></plotly>
+        <div class="container"></div>
         <st-tabs id="ijb9d" class="bg-primary text-white shadow-2" v-model="selected_tab2" :ids="tab_ids2" :labels="tab_labels2"></st-tabs>
         <q-tab-panels id="i4n0r" v-model="selected_tab2">
             <q-tab-panel id="ibqf" name="tab_receivers">

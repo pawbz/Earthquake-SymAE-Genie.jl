@@ -34,9 +34,10 @@ end
 const _usvs_color_scheme = ColorSchemes.darkrainbow
 const _max_pixels = 60
 
-const _model_filename = "20240912T190943289"
+# const _model_filename = "20240912T190943289"
 # const _model_filename = "20241122T122806149"
 # const _model_filename = "20241124T150609280"
+const _model_filename = "20250105T181423701"
 
 
 
@@ -64,7 +65,9 @@ envelope(x) = abs.(hilbert(x))
 # columns = names(df)
 # the soil_data table contains the location of each station along with other information
 # soil_data = CSV.read("data/soil_data.csv", DataFrame)
-const _tgrid = range(-200, stop=200, length=400)[101:356]
+# const _tgrid = range(-200, stop=200, length=400)[101:356]
+const _tgrid = range(-100, 100, length=200)
+
 # stf = range(0.0, stop=1.0, length=256)
 
 function read_all_JLD2_files(available_eqs_jld2)
@@ -105,7 +108,7 @@ function get_stf_traces(selected_eq, selected_pixel)
     jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
     stf_bundle = _eq_data[jld_file_index]["$(string(selected_pixel))"]
     stf = dropdims(mean(envelope(stf_bundle["USVS"][:, :]), dims=2), dims=2)
-    stf_std = dropdims(std(stf_bundle["USVS"], dims=2), dims=(2))
+    stf_std = dropdims(std(envelope(stf_bundle["USVS"][:,:]), dims=2), dims=(2))
     stf_upper = stf .+ stf_std
     stf_lower = stf .- stf_std
 
