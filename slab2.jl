@@ -35,19 +35,28 @@ md" This is for calabria "
 
 # ╔═╡ 849a545b-d06b-4403-913b-e5ca587f8966
 begin
-	dir_path = "./Slab2_AComprehe"  # Directory
-	files = readdir(dir_path)
+	dir_path = "./Slab2"  # Directory
+	folder = readdir(dir_path)
+end
+
+# ╔═╡ 15c3041a-d3f7-42ae-9f03-428184a189c4
+@bind selected_folder confirm(MultiCheckBox(folder))
+
+# ╔═╡ 375a5244-9afd-48eb-80a3-7b489a4bb52f
+begin
+	dir_path_file="./Slab2/"*selected_folder[1]
+     file=readdir(dir_path_file)
 end
 
 # ╔═╡ 1e4304a4-b11e-4d56-b06a-884f69ac5ea0
 md" Here choose .xyz dep file. that is upper subducting plate, if you want thickness of slab then I have to use thk.xyz file also to add thickness at corresponding depth. "
 
-# ╔═╡ 15c3041a-d3f7-42ae-9f03-428184a189c4
-@bind selected_file confirm(MultiCheckBox(files))
+# ╔═╡ c4b5c4af-7c86-4b8e-9f9a-cf11148b91c4
+@bind selected_file confirm(MultiCheckBox(file))
 
 # ╔═╡ 2f81a23e-405c-425d-8f44-b020ff7e386a
 df=map(keys(selected_file)) do i 
-	x=CSV.read("Slab2_AComprehe/"*selected_file[i],header=0, DataFrame)
+	x=CSV.read("Slab2/"*selected_folder[i]*"/"*selected_file[i],header=0, DataFrame)
 end
 
 # ╔═╡ eaa202a6-3dce-4f67-8b3b-af886a9cf987
@@ -652,8 +661,10 @@ version = "17.4.0+2"
 # ╟─9dda2f2e-959a-4b06-a403-914e38888bf7
 # ╟─813a3390-5e31-490b-8689-6842495dfaf1
 # ╠═849a545b-d06b-4403-913b-e5ca587f8966
-# ╟─1e4304a4-b11e-4d56-b06a-884f69ac5ea0
 # ╠═15c3041a-d3f7-42ae-9f03-428184a189c4
+# ╠═375a5244-9afd-48eb-80a3-7b489a4bb52f
+# ╟─1e4304a4-b11e-4d56-b06a-884f69ac5ea0
+# ╠═c4b5c4af-7c86-4b8e-9f9a-cf11148b91c4
 # ╠═2f81a23e-405c-425d-8f44-b020ff7e386a
 # ╟─eaa202a6-3dce-4f67-8b3b-af886a9cf987
 # ╠═62895cf7-fff2-49f4-a63a-5b37dd89b096
