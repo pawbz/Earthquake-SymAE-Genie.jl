@@ -3,6 +3,43 @@ using GenieFramework, JLD2, DataFrames, CSV, StatsBase, PlotlyBase, DSP, ColorSc
 using Dates
 @genietools
 
+# # slab reading
+# slab_folders = filter(x->occursin("Slab2_", x), readdir(joinpath("data", "Slab2"), join=true))
+
+# slab_dep_files = map(slab_folders) do fld
+# 	first(filter(x->(occursin(".xyz", x)&occursin("dep", x)), readdir(fld, join=true)))
+# end
+
+# const _slab_dfs = map(slab_dep_files) do file
+# 	df=CSV.read(file,header=0, DataFrame)
+# end;
+
+function find_nearest_slab(lat::Float64, long::Float64, slab_dfs::Vector{DataFrame})
+    min_distance = Inf
+    nearest_slab = nothing
+
+    for df in slab_dfs
+        slab_lat = df[:, 2]
+        slab_long = df[:, 1]
+
+        # Calculate the Euclidean distance between the given point and all points in the slab dataset
+        distances = [sqrt((lat - slab_lat[i])^2 + (long - slab_long[i])^2) for i in eachindex(slab_lat)]
+
+        # Find the index of the minimum distance
+        min_index = argmin(distances)
+
+        # Update the nearest slab and point if a closer one is found
+        if distances[min_index] < min_distance
+            min_distance = distances[min_index]
+            nearest_slab = df
+        end
+    end
+
+    return nearest_slab
+end
+
+
+
 # read background events
 _background_events = CSV.read("data/deep_events_after2002_400km+.txt", DataFrame; delim='|')
 
@@ -37,7 +74,8 @@ const _max_pixels = 60
 # const _model_filename = "20240912T190943289"
 # const _model_filename = "20241122T122806149"
 # const _model_filename = "20241124T150609280"
-const _model_filename = "20250105T181423701"
+# const _model_filename = "20250105T181423701"
+const _model_filename = "Lowest_mse_EQS"
 
 
 
@@ -104,17 +142,36 @@ function get_pixels(jld2fileindex, eq_data)
     return pixels
 end
 
-function get_stf_traces(selected_eq, selected_pixel)
+function get_stf_traces(selected_eq, selected_pixel, stf_enevelope_toggle)
     jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
     stf_bundle = _eq_data[jld_file_index]["$(string(selected_pixel))"]
     stf = dropdims(mean(envelope(stf_bundle["USVS"][:, :]), dims=2), dims=2)
-    stf_std = dropdims(std(envelope(stf_bundle["USVS"][:,:]), dims=2), dims=(2))
+    envelopes = envelope(stf_bundle["USVS"][:, :])
+    mean_envelope = dropdims(mean(envelopes, dims=2), dims=2)
+
+    # Calculate the correlation coefficient for each STF with the mean envelope
+    correlations = [cor(envelopes[:, i], mean_envelope) for i in 1:size(envelopes, 2)]
+    # Find the index of the STF with the highest correlation
+    best_index = argmax(correlations)
+    best_stf = stf_bundle["USVS"][:, best_index]
+    stf = stf_enevelope_toggle ? mean_envelope : best_stf
+
+    stf_std = dropdims(std(envelope(stf_bundle["USVS"][:, :]), dims=2), dims=(2))
     stf_upper = stf .+ stf_std
     stf_lower = stf .- stf_std
 
     raw_env_mean = (stf_bundle["RAW"])
     raw_env_upper = (stf_bundle["RAW_upper_bound"])
     raw_env_lower = (stf_bundle["RAW_lower_bound"])
+
+    nw = length(stf) ÷ 20
+    fs = step(_tgrid)
+    spec = spectrogram(best_stf, nw, nw ÷ 2; fs=fs)
+    spec_power = spec.power ./ maximum(spec.power)
+    spec_tgrid = range(minimum(_tgrid), stop=maximum(_tgrid), length=size(spec.power, 2))
+    # c = wavelet(Morlet(π), averagingType=NoAve(), β=3);
+    # cwt_res, scales = cwt(stf, c)
+    # frequencies = scal2frq(scales, c, inv(step(_tgrid)))
 
     # traces[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
     traces = [
@@ -125,6 +182,7 @@ function get_stf_traces(selected_eq, selected_pixel)
             name="Source Time Function Using Variational SymAE",
             mode="lines",
             legendgroup="group1",
+            xaxis="x", yaxis="y",
         ),
         scatter(
             x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
@@ -134,27 +192,39 @@ function get_stf_traces(selected_eq, selected_pixel)
             line=attr(color="rgba(0,0,0,0)"),
             hoverinfo="skip",
             legendgroup="group1",
-            showlegend=false
-        ),
-        scatter(x=_tgrid,
-            y=raw_env_mean,
-            line=attr(color="rgb(139,0,0)"),
-            legendgroup="group2",
-            name="Raw Displacement Seismogram Envelope",
-            mode="lines"),
-        scatter(
-            x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
-            y=vcat(raw_env_upper, reverse(raw_env_lower)), # upper, then lower reversed
-            fill="toself",
-            fillcolor="rgba(139,0,0,0.2)",
-            line=attr(color="rgba(0,0,0,0)"),
-            legendgroup="group2",
-            hoverinfo="skip",
-            showlegend=false
-        )
-    ]
+            showlegend=false,
+            xaxis="x", yaxis="y",
+        )]
+    if (stf_enevelope_toggle)
+        push!(traces,
+            scatter(x=_tgrid,
+                y=raw_env_mean,
+                line=attr(color="rgb(139,0,0)"),
+                legendgroup="group2",
+                name="Raw Displacement Seismogram Envelope",
+                xaxis="x", yaxis="y",
+                mode="lines"))
+
+        push!(traces,
+            scatter(
+                x=vcat(_tgrid, reverse(_tgrid)), # x, then x reversed
+                y=vcat(raw_env_upper, reverse(raw_env_lower)), # upper, then lower reversed
+                fill="toself",
+                fillcolor="rgba(139,0,0,0.2)",
+                line=attr(color="rgba(0,0,0,0)"),
+                legendgroup="group2",
+                hoverinfo="skip",
+                xaxis="x", yaxis="y",
+                showlegend=false
+            ))
+    end
+    push!(traces,
+        heatmap(x=spec_tgrid, y=spec.freq, z=spec_power, xaxis="x", yaxis="y2", colorscale="Earth"))
     return traces
 end
+
+
+
 
 const _available_eqs = jld2_to_eqname.(_available_eqs_jld2)
 const _eq_data = read_all_JLD2_files(_available_eqs_jld2)
@@ -166,25 +236,50 @@ const _stf_layout = PlotlyBase.Layout(
         font=attr(size=22)     # Customize font size if needed
     ),
     template="plotly_white",
-    height=700,
+    height=900,
     # width=900,
+    ticklabelposition="inside top",
     xaxis=attr(
         title="Relative Time (s)",
         titlefont=attr(size=22),
         font=attr(size=22),
-        tickfont=attr(size=22),
+        tickfont=attr(size=15),
         nticks=10,
+        showgrid=true,
+        mirror=true,
         gridwidth=1,
+        gridcolor="black",
+        automargin=true,
         range=(-50, 80),
     ),
     yaxis=attr(
         title="Normalized Amplitude",
         titlefont=attr(size=22),
         font=attr(size=22),
-        tickfont=attr(size=22),
+        tickfont=attr(size=15),
         nticks=10,
+        showgrid=true,
+        mirror=true,
         gridwidth=1,
-        range=(0, 10),
+        gridcolor="black",
+        # ticklabelposition="inside left",
+        automargin=true,
+        domain=[0, 0.75],
+    ),
+    yaxis2=attr(
+        title="Frequency",
+        titlefont=attr(size=22),
+        font=attr(size=22),
+        tickfont=attr(size=15),
+        nticks=10,
+        showgrid=true,
+        mirror=true,
+        gridwidth=1,
+        gridcolor="black",
+        # ticklabelposition="inside left",
+        domain=[0.75, 1],
+        automargin=true,
+        # overlaying="y",
     ),
     legend=attr(
         orientation="h",         # Horizontal legend
@@ -196,6 +291,8 @@ const _stf_layout = PlotlyBase.Layout(
         traceorder="grouped",    # Group legend items to display on multiple rows
     )
 )
+
+
 const _usvs_layout = PlotlyBase.Layout(
     template="plotly_white",
     height=1200,
@@ -206,19 +303,39 @@ const _usvs_layout = PlotlyBase.Layout(
     xaxis=attr(
         titlefont=attr(size=22),
         font=attr(size=22),
-        tickfont=attr(size=22),
+        tickfont=attr(size=15),
         range=(-50, 60),
         domain=[0, 0.48],
         showgrid=true,
+        mirror=true,
+        gridwidth=1, gridcolor="black",
         title="Relative Time (s)"),
     xaxis2=attr(
         titlefont=attr(size=22),
         font=attr(size=22),
-        tickfont=attr(size=22),
+        tickfont=attr(size=15),
         range=(-50, 60),
         showgrid=true,
+        mirror=true,
         domain=[0.52, 1],
+        gridwidth=1, gridcolor="black",
         title="Relative Time (s)"),
+    dragmode="drawopenpath",
+    newshape_line_color="black",
+    newshape_line_width=1,
+    newshape_line_style="dash",
+    modebar_add=["drawline",
+        "drawopenpath",
+        "drawclosedpath",
+        "drawcircle",
+        "drawrect",
+        "eraseshape"
+    ],
+    annotations=[
+        attr(text="Absolutely-positioned annotation",
+            xref="paper", yref="paper",
+            x=0.3, y=0.3, showarrow=false)
+    ]
 )
 @app begin
     @out available_eqs = _available_eqs
@@ -259,10 +376,15 @@ const _usvs_layout = PlotlyBase.Layout(
         given_lat = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["latitude"]
         given_lon = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["longitude"]
         given_depth = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["depth"]
-        filtered_df = filter_background_events(_background_events, given_date, given_lat, given_lon)
-        latitudes = filtered_df[!, " Latitude "]
-        longitudes = filtered_df[!, " Longitude "]
-        depths = filtered_df[!, " Depth/km "]
+
+        # slab_df = find_nearest_slab(given_lat, given_lon, _slab_dfs)
+
+        filtered_event_df = filter_background_events(_background_events, given_date, given_lat, given_lon)
+        event_latitudes = filtered_event_df[!, " Latitude "]
+        event_longitudes = filtered_event_df[!, " Longitude "]
+        event_depths = filtered_event_df[!, " Depth/km "]
+
+
 
         background_eq_traces = [
             PlotlyBase.scatter3d(
@@ -313,10 +435,11 @@ const _usvs_layout = PlotlyBase.Layout(
         selected_pixel = first(available_pixels)
         # notify(__model__, "Selected Pixel $selected_pixel")
     end
+    @in stf_envelope_toggle = false
     # @out traces = [scatter(x=collect(1:10), y=randn(10)), scatter(x=collect(1:10), y=randn(10))]
     @out traces = [scatter()]
-    @onchange selected_eq, selected_pixel begin
-        traces = get_stf_traces(selected_eq, selected_pixel)
+    @onchange selected_eq, selected_pixel, stf_envelope_toggle begin
+        traces = get_stf_traces(selected_eq, selected_pixel, stf_envelope_toggle)
     end
 
     @out usvs_layout = _usvs_layout

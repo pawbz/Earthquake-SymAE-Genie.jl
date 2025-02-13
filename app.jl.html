@@ -40,7 +40,18 @@
         <st-tabs id="i3y3w" class="bg-primary text-white shadow-2" v-model="selected_tab" :ids="tab_ids" :labels="tab_labels"></st-tabs>
         <q-tab-panels id="ibfvl" v-model="selected_tab">
             <q-tab-panel id="iv3n" name="tab_stf">
-                <q-select id="io01" v-model="selected_pixel" label="Select a pixel" :options="available_pixels"></q-select>
+                <div class="row">
+                    <div class="col-3 col-sm flex">
+                        <div class="st-module">
+                            <q-toggle id="i39lx" color="dark" label="Compare With Envelope Stacking" v-model="stf_envelope_toggle"></q-toggle>
+                        </div>
+                    </div>
+                    <div class="col-9 flex">
+                        <div class="st-module">
+                            <q-select id="io01" v-model="selected_pixel" label="Select a pixel" :options="available_pixels"></q-select>
+                        </div>
+                    </div>
+                </div>
                 <plotly id="ir2v" :data="traces" config="e30=" :layout="stf_layout"></plotly>
             </q-tab-panel>
             <q-tab-panel id="ih08b" name="tab_usvs">
