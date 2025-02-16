@@ -1,41 +1,48 @@
 # the app.jl file is the main entry point to the application. It is a bridge between the UI and the data processing logic.
 using GenieFramework, JLD2, DataFrames, CSV, StatsBase, PlotlyBase, DSP, ColorSchemes, Healpix, Random, Colors
-using Dates
+using Dates, Distances
 @genietools
 
-# # slab reading
-# slab_folders = filter(x->occursin("Slab2_", x), readdir(joinpath("data", "Slab2"), join=true))
+# slab reading
+const _slab_folders = filter(x -> occursin("Slab2_", x), readdir(joinpath("data", "Slab2"), join=true))
 
-# slab_dep_files = map(slab_folders) do fld
-# 	first(filter(x->(occursin(".xyz", x)&occursin("dep", x)), readdir(fld, join=true)))
-# end
+const _slab_dep_files = map(_slab_folders) do fld
+    first(filter(x -> (occursin(".xyz", x) & occursin("dep", x)), readdir(fld, join=true)))
+end
 
-# const _slab_dfs = map(slab_dep_files) do file
-# 	df=CSV.read(file,header=0, DataFrame)
-# end;
+slab_dfs = map(_slab_dep_files) do file
+    df = CSV.read(file, header=0, DataFrame)
+end;
 
-function find_nearest_slab(lat::Float64, long::Float64, slab_dfs::Vector{DataFrame})
+# source long is -180 to 180
+function convert_longitude(lon)
+    return lon > 180 ? lon - 360 : lon
+end
+
+# source long is -180 to 180
+function find_nearest_slab(lat, long, slab_dfs)
     min_distance = Inf
     nearest_slab = nothing
+    nearest_slab_index = nothing
 
-    for df in slab_dfs
+    for (idf, df) in enumerate(slab_dfs)
         slab_lat = df[:, 2]
-        slab_long = df[:, 1]
-
-        # Calculate the Euclidean distance between the given point and all points in the slab dataset
-        distances = [sqrt((lat - slab_lat[i])^2 + (long - slab_long[i])^2) for i in eachindex(slab_lat)]
-
-        # Find the index of the minimum distance
-        min_index = argmin(distances)
+        slab_long = convert_longitude.(df[:, 1])
+        
+        # Calculate the Haversine distance between the given point and each point in the slab dataset
+        distances = haversine.(Ref((lat, long)), zip(slab_lat, slab_long), 6372.8)
+        # Calculate the mean distance
+        distance = mean(distances)
 
         # Update the nearest slab and point if a closer one is found
-        if distances[min_index] < min_distance
-            min_distance = distances[min_index]
+        if distance < min_distance
+            min_distance = distance
             nearest_slab = df
+            nearest_slab_index = idf
         end
     end
 
-    return nearest_slab
+    return nearest_slab, nearest_slab_index
 end
 
 
@@ -54,16 +61,11 @@ function filter_background_events(df::DataFrame, given_date::Date, lat, lon)
     end_date = given_date + Year(100)
 
     # Define the latitude and longitude range
-    d = 10
-    lat_min = lat - d
-    lat_max = lat + d
-    lon_min = lon - d
-    lon_max = lon + d
+    d = 500
 
-    # Filter the DataFrame
+    # Filter the DataFrame using Haversine distance
     filtered_df = filter(row -> row.event_date >= start_date && row.event_date <= end_date &&
-                                    row.latitude >= lat_min && row.latitude <= lat_max &&
-                                    row.longitude >= lon_min && row.longitude <= lon_max, df)
+                                    haversine((lat, lon), (row.latitude, row.longitude), 6372.8) <= d, df)
 
     return filtered_df
 end
@@ -75,11 +77,8 @@ const _max_pixels = 60
 # const _model_filename = "20241122T122806149"
 # const _model_filename = "20241124T150609280"
 # const _model_filename = "20250105T181423701"
-const _model_filename = "Lowest_mse_EQS"
+const _model_filename = "Lowest_mse_EachPixelOptim"
 
-
-
-a = "19940609"
 
 
 const _available_eqs_jld2 = filter(x -> occursin(".jld2", x), readdir(joinpath("data", _model_filename), join=true))
@@ -164,7 +163,7 @@ function get_stf_traces(selected_eq, selected_pixel, stf_enevelope_toggle)
     raw_env_upper = (stf_bundle["RAW_upper_bound"])
     raw_env_lower = (stf_bundle["RAW_lower_bound"])
 
-    nw = length(stf) ÷ 20
+    nw = length(stf) ÷ 30
     fs = step(_tgrid)
     spec = spectrogram(best_stf, nw, nw ÷ 2; fs=fs)
     spec_power = spec.power ./ maximum(spec.power)
@@ -229,114 +228,11 @@ end
 const _available_eqs = jld2_to_eqname.(_available_eqs_jld2)
 const _eq_data = read_all_JLD2_files(_available_eqs_jld2)
 const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
-const _stf_layout = PlotlyBase.Layout(
-    title=attr(
-        x=0.5,                   # Horizontal position (0 is left, 0.5 is center, 1 is right)
-        y=0.97,                   # Vertical position (0 is bottom, 1 is top)
-        font=attr(size=22)     # Customize font size if needed
-    ),
-    template="plotly_white",
-    height=900,
-    # width=900,
-    ticklabelposition="inside top",
-    xaxis=attr(
-        title="Relative Time (s)",
-        titlefont=attr(size=22),
-        font=attr(size=22),
-        tickfont=attr(size=15),
-        nticks=10,
-        showgrid=true,
-        mirror=true,
-        gridwidth=1,
-        gridcolor="black",
-        automargin=true,
-        range=(-50, 80),
-    ),
-    yaxis=attr(
-        title="Normalized Amplitude",
-        titlefont=attr(size=22),
-        font=attr(size=22),
-        tickfont=attr(size=15),
-        nticks=10,
-        showgrid=true,
-        mirror=true,
-        gridwidth=1,
-        gridcolor="black",
-        # ticklabelposition="inside left",
-        automargin=true,
-        domain=[0, 0.75],
-    ),
-    yaxis2=attr(
-        title="Frequency",
-        titlefont=attr(size=22),
-        font=attr(size=22),
-        tickfont=attr(size=15),
-        nticks=10,
-        showgrid=true,
-        mirror=true,
-        gridwidth=1,
-        gridcolor="black",
-        # ticklabelposition="inside left",
-        domain=[0.75, 1],
-        automargin=true,
-        # overlaying="y",
-    ),
-    legend=attr(
-        orientation="h",         # Horizontal legend
-        y=-0.2,                  # Position below x-axis (adjust this value as needed)
-        font=attr(size=22),
-        x=0.5,                   # Center the legend horizontally
-        xanchor="center",        # Anchor the legend to the center of the x position
-        yanchor="top",           # Align to the top so that it moves downward from x-axis
-        traceorder="grouped",    # Group legend items to display on multiple rows
-    )
-)
 
 
-const _usvs_layout = PlotlyBase.Layout(
-    template="plotly_white",
-    height=1200,
-    title="Raw Envelope Stacking Vs. SymAE Source Time Functions",
-    yaxis_anchor="x",
-    legend=attr(title="pixel (colatitude, longitude)"),
-    yaxis=attr(showgrid=false, showticklabels=false),
-    xaxis=attr(
-        titlefont=attr(size=22),
-        font=attr(size=22),
-        tickfont=attr(size=15),
-        range=(-50, 60),
-        domain=[0, 0.48],
-        showgrid=true,
-        mirror=true,
-        gridwidth=1, gridcolor="black",
-        title="Relative Time (s)"),
-    xaxis2=attr(
-        titlefont=attr(size=22),
-        font=attr(size=22),
-        tickfont=attr(size=15),
-        range=(-50, 60),
-        showgrid=true,
-        mirror=true,
-        domain=[0.52, 1],
-        gridwidth=1, gridcolor="black",
-        title="Relative Time (s)"),
-    dragmode="drawopenpath",
-    newshape_line_color="black",
-    newshape_line_width=1,
-    newshape_line_style="dash",
-    modebar_add=["drawline",
-        "drawopenpath",
-        "drawclosedpath",
-        "drawcircle",
-        "drawrect",
-        "eraseshape"
-    ],
-    annotations=[
-        attr(text="Absolutely-positioned annotation",
-            xref="paper", yref="paper",
-            x=0.3, y=0.3, showarrow=false)
-    ]
-)
+
+
+
 @app begin
     @out available_eqs = _available_eqs
     @out eq_lat_selected = 0.0
@@ -377,23 +273,36 @@ const _usvs_layout = PlotlyBase.Layout(
         given_lon = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["longitude"]
         given_depth = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["depth"]
 
-        # slab_df = find_nearest_slab(given_lat, given_lon, _slab_dfs)
 
         filtered_event_df = filter_background_events(_background_events, given_date, given_lat, given_lon)
         event_latitudes = filtered_event_df[!, " Latitude "]
         event_longitudes = filtered_event_df[!, " Longitude "]
         event_depths = filtered_event_df[!, " Depth/km "]
 
-
+# println(given_lat, given_lon, given_depth)
 
         background_eq_traces = [
             PlotlyBase.scatter3d(
-                x=longitudes,
-                y=latitudes,
-                z=depths,
+                x=event_longitudes,
+                y=event_latitudes,
+                z=event_depths,
                 mode="markers",
-                name="",
-                marker=attr(size=5, color=depths, colorscale="Reds", showscale=true)
+                name="Regional Catalog Events",
+                marker=attr(size=5, color="gray", showscale=false)
+            )
+        ]
+
+        slab_df, islab_df = find_nearest_slab(given_lat, given_lon, slab_dfs)
+        slab_name = join(split(basename(_slab_folders[islab_df]), "_")[3:end]) * " slab"
+
+        background_eq_traces = vcat(background_eq_traces, [
+            PlotlyBase.scatter3d(
+                x=convert_longitude.(slab_df[:, 1]),
+                y=slab_df[:, 2],
+                z=-1.0 .* slab_df[:, 3],
+                mode="markers",
+                name=slab_name,
+                marker=attr(size=2, opacity=0.5, color=-1.0 .* slab_df[:, 3], colorscale="Reds", showscale=true, cmin=0, cmax=700)
             ),
             PlotlyBase.scatter3d(
                 x=[given_lon],
@@ -403,7 +312,7 @@ const _usvs_layout = PlotlyBase.Layout(
                 name="Selected Event",
                 marker=attr(size=5, color="black")
             )
-        ]
+        ])
     end
 
     @out background_eq_layout = PlotlyBase.Layout(
@@ -437,13 +346,122 @@ const _usvs_layout = PlotlyBase.Layout(
     end
     @in stf_envelope_toggle = false
     # @out traces = [scatter(x=collect(1:10), y=randn(10)), scatter(x=collect(1:10), y=randn(10))]
+    @out stf_layout = PlotlyBase.Layout(
+        title=attr(
+            x=0.5,                   # Horizontal position (0 is left, 0.5 is center, 1 is right)
+            y=0.97,                   # Vertical position (0 is bottom, 1 is top)
+            font=attr(size=22)     # Customize font size if needed
+        ),
+        template="plotly_white",
+        height=900,
+        # width=900,
+        ticklabelposition="inside top",
+        xaxis=attr(
+            title="Relative Time (s)",
+            titlefont=attr(size=22),
+            font=attr(size=22),
+            tickfont=attr(size=15),
+            nticks=10,
+            showgrid=true,
+            mirror=true,
+            gridwidth=1,
+            gridcolor="black",
+            automargin=true,
+            range=(-50, 80),
+        ),
+        yaxis=attr(
+            title="Normalized Amplitude",
+            titlefont=attr(size=22),
+            font=attr(size=22),
+            tickfont=attr(size=15),
+            nticks=10,
+            showgrid=true,
+            mirror=true,
+            gridwidth=1,
+            gridcolor="black",
+            # ticklabelposition="inside left",
+            automargin=true,
+            domain=[0, 0.75],
+        ),
+        yaxis2=attr(
+            title="Frequency",
+            titlefont=attr(size=22),
+            font=attr(size=22),
+            tickfont=attr(size=15),
+            nticks=10,
+            showgrid=true,
+            mirror=true,
+            gridwidth=1,
+            gridcolor="black",
+            # ticklabelposition="inside left",
+            domain=[0.75, 1],
+            automargin=true,
+            # overlaying="y",
+        ),
+        legend=attr(
+            orientation="h",         # Horizontal legend
+            y=-0.2,                  # Position below x-axis (adjust this value as needed)
+            font=attr(size=22),
+            x=0.5,                   # Center the legend horizontally
+            xanchor="center",        # Anchor the legend to the center of the x position
+            yanchor="top",           # Align to the top so that it moves downward from x-axis
+            traceorder="grouped",    # Group legend items to display on multiple rows
+        )
+    )
     @out traces = [scatter()]
     @onchange selected_eq, selected_pixel, stf_envelope_toggle begin
         traces = get_stf_traces(selected_eq, selected_pixel, stf_envelope_toggle)
     end
 
-    @out usvs_layout = _usvs_layout
-    @out stf_layout = _stf_layout
+    @out usvs_layout = PlotlyBase.Layout(
+        template="plotly_white",
+        height=1200,
+        title="Raw Envelope Stacking Vs. SymAE Source Time Functions",
+        yaxis_anchor="x",
+        legend=attr(title="pixel (colatitude, longitude)"),
+        yaxis=attr(showgrid=false, showticklabels=false),
+        xaxis=attr(
+            titlefont=attr(size=22),
+            font=attr(size=22),
+            tickfont=attr(size=15),
+            range=(-50, 60),
+            domain=[0, 0.48],
+            showgrid=true,
+            mirror=true,
+            gridwidth=1, gridcolor="black",
+            title="Relative Time (s)"),
+        xaxis2=attr(
+            titlefont=attr(size=22),
+            font=attr(size=22),
+            tickfont=attr(size=15),
+            range=(-50, 60),
+            showgrid=true,
+            mirror=true,
+            domain=[0.52, 1],
+            gridwidth=1, gridcolor="black",
+            title="Relative Time (s)"),
+        dragmode="drawopenpath",
+        newshape_line_color="black",
+        newshape_line_width=1,
+        newshape_line_style="dash",
+        modebar_add=["drawline",
+            "drawopenpath",
+            "drawclosedpath",
+            "drawcircle",
+            "drawrect",
+            "eraseshape"
+        ],
+        annotations=[
+            attr(text="Raw Displacement Envelope Stacking",
+                xref="paper", yref="paper",
+                font=attr(size=22),
+                x=0.0, y=1.2, showarrow=false),
+                attr(text="fnnotation",
+                xref="paper", yref="paper",
+                font=attr(size=22),
+                x=0.5, y=1.2, showarrow=false)
+        ]
+    )
 
 
     @in selected_rec_pixel = []
@@ -480,16 +498,17 @@ const _usvs_layout = PlotlyBase.Layout(
     end
 
     @out traces_usvs = [scatter()]
-    @onchange selected_eq, available_pixels begin
+    @onchange selected_eq begin
 
         jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
         all_pixels = get_pixels(jld_file_index, _eq_data)
-        traces_usvs[!] = [] # With the [!] suffix we reassign the array without triggering a UI update
         av = 0
         av_raw = 0
         scale = 2
         sorted_pixels = sort(tryparse.(Int, all_pixels))
         npixels = length(sorted_pixels)
+
+        traces_usvs_all = []
         for (ipixel, pixel) in enumerate(sorted_pixels)
             angles = broadcast(pix2angRing(Resolution(4), pixel)) do x
                 floor(Int, rad2deg(x))
@@ -507,9 +526,8 @@ const _usvs_layout = PlotlyBase.Layout(
             current_yoffset = (scale * (ipixel - 1))
             pixel_stf = pixel_stf ./ maximum(pixel_stf) .* 2.5
             pixel_raw = pixel_raw ./ maximum(pixel_raw) .* 2.5
-
             # @show get(_usvs_color_scheme, ipixel/npixels), ipixel/npixels
-            push!(traces_usvs,
+            push!(traces_usvs_all,
                 scatter(
                     x=_tgrid,
                     y=pixel_stf .+ current_yoffset,
@@ -523,7 +541,7 @@ const _usvs_layout = PlotlyBase.Layout(
                     legendgroup="group$ipixel",
                 ))
 
-            push!(traces_usvs,
+            push!(traces_usvs_all,
                 scatter(
                     x=_tgrid,
                     y=pixel_raw .+ current_yoffset,
@@ -541,7 +559,7 @@ const _usvs_layout = PlotlyBase.Layout(
         last_yoffset = (scale * (32))
         av .= av ./ maximum(av) .* 2.5
         av_raw .= av_raw ./ maximum(av_raw) .* 2.5
-        push!(traces_usvs,
+        push!(traces_usvs_all,
             scatter(
                 x=_tgrid,
                 y=av .+ last_yoffset,
@@ -551,7 +569,7 @@ const _usvs_layout = PlotlyBase.Layout(
                 name="mean",
                 legendgroup="group0",
             ))
-        push!(traces_usvs,
+        push!(traces_usvs_all,
             scatter(
                 x=_tgrid,
                 y=av_raw .+ last_yoffset,
@@ -562,6 +580,7 @@ const _usvs_layout = PlotlyBase.Layout(
                 name="mean",
                 legendgroup="group0",
             ))
+        traces_usvs = traces_usvs_all
         @push traces_usvs # Update the traces vector when all traces are generated
     end
 

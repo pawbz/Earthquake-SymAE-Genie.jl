@@ -16,6 +16,9 @@ macro bind(def, element)
     #! format: on
 end
 
+# ╔═╡ c12f89c7-a038-4b02-9616-81704b24aee6
+using Distances
+
 # ╔═╡ 6afc6078-702a-4cc1-8b12-4c1ab60902b8
 using Statistics
 
@@ -40,7 +43,7 @@ md" This is for calabria "
 
 # ╔═╡ 849a545b-d06b-4403-913b-e5ca587f8966
 begin
-	dir_path = "./Slab2"  # Directory
+	dir_path = "./data/Slab2"  # Directory
 	folder = readdir(dir_path)
 end
 
@@ -58,7 +61,7 @@ end
 
 # ╔═╡ 375a5244-9afd-48eb-80a3-7b489a4bb52f
 begin
-	dir_path_file="./Slab2/"*selected_folder[1]
+	dir_path_file="./data/Slab2/"*selected_folder[1]
      file=readdir(dir_path_file)
 end
 
@@ -90,7 +93,7 @@ end
 
 # ╔═╡ 2f81a23e-405c-425d-8f44-b020ff7e386a
 df=map(keys(selected_file)) do i 
-	x=CSV.read("Slab2/"*selected_folder[i]*"/"*selected_file[i],header=0, DataFrame)
+	x=CSV.read("data/Slab2/"*selected_folder[i]*"/"*selected_file[i],header=0, DataFrame)
 end
 
 # ╔═╡ eaa202a6-3dce-4f67-8b3b-af886a9cf987
@@ -112,11 +115,11 @@ md"# Plotting slab"
 
 # ╔═╡ 6283c23a-ce92-11ef-16ee-23fb2172020b
 begin
-	scatter_plot = scatter(
+	scatter_plot = surface(
 	    x = long,
 	    y = lat,
 		z=depth,
-	    mode = "markers",
+	    mode = "lines",
 	    marker = attr(
 	        # size = slip*0.1,  # Adjust the marker size
 	        color = depth,  # Use time values to determine marker color
@@ -154,6 +157,30 @@ begin
 	plot(scatter_plot, layout)
 end
 
+# ╔═╡ fdba8dd3-be75-4492-a1f6-f6e38b741170
+begin
+	
+	a, b, d = 1.32, 1., 0.8
+	c = a^2 - b^2
+	dom = range(0, stop=2π, length=100)
+	u = dom' .* ones(100)
+	v = ones(100)' .* dom
+	
+	x = @. (d * (c - a * cos(u) * cos(v)) + b^2 * cos(u)) / (a - c * cos(u) * cos(v))
+	y = @. b * sin(u) * (a - d*cos(v)) / (a - c * cos(u) * cos(v))
+	z = @. b * sin(v) * (c*cos(u) - d) / (a - c * cos(u) * cos(v))
+	
+	p = make_subplots(
+	    rows=1, cols=2,
+	    specs=[Spec(kind="scene") Spec(kind="scene")],
+	    subplot_titles=["Color corresponds to z"  "Color corresponds to distance to origin"]
+	)
+	add_trace!(p, surface(x=x, y=y, z=z, colorbar_x=-0.07), row=1, col=1)
+	add_trace!(p, surface(x=long, y=lat, z=depth, surfacecolor=depth), row=1, col=2)
+	relayout!(p, title_text="Ring cyclide")
+	p
+end
+
 # ╔═╡ e9f111e9-978f-42ab-9a10-39e50bc01bc5
 function nan_to_missing!(vec)
     return [isnan(v) ? missing : v for v in vec]
@@ -163,14 +190,54 @@ end
 # ╔═╡ a408d2f4-eb16-4d1e-baf6-91f886bbc09a
 plot(depth)
 
+# ╔═╡ 14d94f6a-e0d9-4509-9d86-60d6e12dcab8
+slab_dep_files[20]
+
+# ╔═╡ dc6b1016-08ec-4dc0-9e4a-0bf850db7233
+# source long is -180 to 180
+function convert_longitude(lon)
+    return lon > 180 ? lon - 360 : lon
+end
+
+# ╔═╡ ea4a0b07-a34d-41b7-939e-5ad994eee516
+
+function find_nearest_slab(lat, long, slab_dfs)
+    min_distance = Inf
+    nearest_slab = nothing
+    nearest_slab_index = nothing
+
+    for (idf, df) in enumerate(slab_dfs)
+        slab_lat = df[:, 2]
+        slab_long = convert_longitude.(df[:, 1])
+        
+        # Calculate the Haversine distance between the given point and each point in the slab dataset
+        distances = haversine.(Ref((lat, long)), zip(slab_lat, slab_long))
+        # Calculate the mean distance
+        distance = mean(distances)
+
+        # Update the nearest slab and point if a closer one is found
+        if distance < min_distance
+			@show idf, mean(slab_lat), mean(slab_long)
+            min_distance = distance
+            nearest_slab = df
+            nearest_slab_index = idf
+        end
+    end
+
+    return nearest_slab, nearest_slab_index
+end
+
+# ╔═╡ cb511251-28ec-4b6f-bfe1-5959635e4363
+find_nearest_slab(-13, -67, slab_dfs)
+
 # ╔═╡ 62284599-cf73-4fa5-aa92-6d7f1d129782
 let
 	
 	# Plotting slab
 	heatmap_plot = densitymapbox(
-	    lat = slab_lat,
-	    lon = slab_long,
-	    z = -1.0 * slab_depth,
+	    lat = lat,
+	    lon = long,
+	    z = -1.0 * depth,
 	    radius = 10,  # Adjust the radius for the heatmap
 	    colorscale = "Reds",  # Choose a colormap
 	    colorbar = attr(title = "Depth"),  # Add a colorbar with a title
@@ -190,11 +257,15 @@ let
 	plot(heatmap_plot, layout)
 end
 
+# ╔═╡ cbe70971-41f9-4a90-a286-d61121a44a19
+plot(randn(4))
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 PlutoPlotly = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -202,6 +273,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 [compat]
 CSV = "~0.10.14"
 DataFrames = "~1.6.1"
+Distances = "~0.10.12"
 PlutoPlotly = "~0.6.2"
 PlutoUI = "~0.7.60"
 Statistics = "~1.11.1"
@@ -211,9 +283,9 @@ Statistics = "~1.11.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.2"
+julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "e20599ca5a34e4f2398082d11822ffc8219cb17c"
+project_hash = "2b7257b558f1de2d8a9751f4689a193c647d8d54"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -327,6 +399,20 @@ deps = ["Mmap"]
 git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 version = "1.9.1"
+
+[[deps.Distances]]
+deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
+git-tree-sha1 = "c7e3a542b999843086e2f29dac96a618c105be1d"
+uuid = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+version = "0.10.12"
+
+    [deps.Distances.extensions]
+    DistancesChainRulesCoreExt = "ChainRulesCore"
+    DistancesSparseArraysExt = "SparseArrays"
+
+    [deps.Distances.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
@@ -653,6 +739,12 @@ version = "1.11.1"
     [deps.Statistics.weakdeps]
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[[deps.StatsAPI]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "1ff449ad350c9c4cbc756624d6f8a8c3ef56d3ed"
+uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
+version = "1.7.0"
+
 [[deps.StringManipulation]]
 deps = ["PrecompileTools"]
 git-tree-sha1 = "a6b1675a536c5ad1a60e5a5153e1fee12eb146e3"
@@ -778,9 +870,16 @@ version = "17.4.0+2"
 # ╠═65c0e73c-668e-4742-8004-7d54acf75bca
 # ╟─158138b5-5c7b-4b29-a100-a1b6e296651c
 # ╠═6283c23a-ce92-11ef-16ee-23fb2172020b
+# ╠═fdba8dd3-be75-4492-a1f6-f6e38b741170
 # ╠═e9f111e9-978f-42ab-9a10-39e50bc01bc5
 # ╠═a408d2f4-eb16-4d1e-baf6-91f886bbc09a
+# ╠═cb511251-28ec-4b6f-bfe1-5959635e4363
+# ╠═c12f89c7-a038-4b02-9616-81704b24aee6
+# ╠═14d94f6a-e0d9-4509-9d86-60d6e12dcab8
+# ╠═dc6b1016-08ec-4dc0-9e4a-0bf850db7233
+# ╠═ea4a0b07-a34d-41b7-939e-5ad994eee516
 # ╠═62284599-cf73-4fa5-aa92-6d7f1d129782
+# ╠═cbe70971-41f9-4a90-a286-d61121a44a19
 # ╠═6afc6078-702a-4cc1-8b12-4c1ab60902b8
 # ╠═895fff1a-5c45-4e64-8e32-46fa57fad5f2
 # ╟─00000000-0000-0000-0000-000000000001
