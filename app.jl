@@ -28,7 +28,7 @@ function find_nearest_slab(lat, long, slab_dfs)
     for (idf, df) in enumerate(slab_dfs)
         slab_lat = df[:, 2]
         slab_long = convert_longitude.(df[:, 1])
-        
+
         # Calculate the Haversine distance between the given point and each point in the slab dataset
         distances = haversine.(Ref((lat, long)), zip(slab_lat, slab_long), 6372.8)
         # Calculate the mean distance
@@ -77,7 +77,8 @@ const _max_pixels = 60
 # const _model_filename = "20241122T122806149"
 # const _model_filename = "20241124T150609280"
 # const _model_filename = "20250105T181423701"
-const _model_filename = "Lowest_mse_EachPixelOptim"
+# const _model_filename = "Lowest_mse_EachPixelOptim"
+const _model_filename = "Mixed_Single_Multiple_Pixel_BestInterpreted_24Feb2025"
 
 
 
@@ -246,6 +247,7 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
         eq_long_selected = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["longitude"]
     end
 
+
     @out eq_location_traces = [PlotlyBase.scattermapbox(
         lat=[eqloc["latitude"]],
         lon=[eqloc["longitude"]],
@@ -258,16 +260,20 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
 
     @out tab_ids = ["tab_stf", "tab_usvs"]
     @out tab_ids2 = ["tab_receivers", "tab_sources"]
-    @out tab_labels2 = ["Receiver Locations", "Regional Catalog Events"]
+    @out tab_labels2 = ["Receiver Locations", "Regional Catalog Events And Slab 2.0"]
     @in selected_tab2 = "tab_receivers"
     @out tab_labels = ["Single Pixel", "All Pixels"]
     @in selected_tab = "tab_stf"
 
 
 
+    @in slab_toggle = false
+    @onchange selected_eq begin
+        slab_toggle = false
+    end
     # Create a 3D scatter plot
     @out background_eq_traces = [PlotlyBase.scatter3d()]
-    @onchange selected_eq begin
+    @onchange selected_eq, slab_toggle begin
         given_date = Date(first(split(selected_eq, "_")), "yyyymmdd")
         given_lat = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["latitude"]
         given_lon = _eq_loc_data[findfirst(x -> x == selected_eq, available_eqs)]["longitude"]
@@ -279,7 +285,7 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
         event_longitudes = filtered_event_df[!, " Longitude "]
         event_depths = filtered_event_df[!, " Depth/km "]
 
-# println(given_lat, given_lon, given_depth)
+        # println(given_lat, given_lon, given_depth)
 
         background_eq_traces = [
             PlotlyBase.scatter3d(
@@ -289,20 +295,6 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
                 mode="markers",
                 name="Regional Catalog Events",
                 marker=attr(size=5, color="gray", showscale=false)
-            )
-        ]
-
-        slab_df, islab_df = find_nearest_slab(given_lat, given_lon, slab_dfs)
-        slab_name = join(split(basename(_slab_folders[islab_df]), "_")[3:end]) * " slab"
-
-        background_eq_traces = vcat(background_eq_traces, [
-            PlotlyBase.scatter3d(
-                x=convert_longitude.(slab_df[:, 1]),
-                y=slab_df[:, 2],
-                z=-1.0 .* slab_df[:, 3],
-                mode="markers",
-                name=slab_name,
-                marker=attr(size=2, opacity=0.5, color=-1.0 .* slab_df[:, 3], colorscale="Reds", showscale=true, cmin=0, cmax=700)
             ),
             PlotlyBase.scatter3d(
                 x=[given_lon],
@@ -312,7 +304,22 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
                 name="Selected Event",
                 marker=attr(size=5, color="black")
             )
-        ])
+        ]
+        if (slab_toggle)
+            slab_df, islab_df = find_nearest_slab(given_lat, given_lon, slab_dfs)
+            slab_name = join(split(basename(_slab_folders[islab_df]), "_")[3:end]) * " slab"
+
+            background_eq_traces = vcat(background_eq_traces, [
+                PlotlyBase.scatter3d(
+                    x=convert_longitude.(slab_df[:, 1]),
+                    y=slab_df[:, 2],
+                    z=-1.0 .* slab_df[:, 3],
+                    mode="markers",
+                    name=slab_name,
+                    marker=attr(size=2, opacity=0.5, color=-1.0 .* slab_df[:, 3], colorscale="Reds", showscale=true, cmin=0, cmax=700)
+                )
+            ])
+        end
     end
 
     @out background_eq_layout = PlotlyBase.Layout(
@@ -416,7 +423,6 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
     @out usvs_layout = PlotlyBase.Layout(
         template="plotly_white",
         height=1200,
-        title="Raw Envelope Stacking Vs. SymAE Source Time Functions",
         yaxis_anchor="x",
         legend=attr(title="pixel (colatitude, longitude)"),
         yaxis=attr(showgrid=false, showticklabels=false),
@@ -454,12 +460,14 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
         annotations=[
             attr(text="Raw Displacement Envelope Stacking",
                 xref="paper", yref="paper",
+                xanchor="center",
                 font=attr(size=22),
-                x=0.0, y=1.2, showarrow=false),
-                attr(text="fnnotation",
+                x=0.25, y=1.03, showarrow=false),
+            attr(text="SymAE Source Time Functions",
                 xref="paper", yref="paper",
+                xanchor="center",
                 font=attr(size=22),
-                x=0.5, y=1.2, showarrow=false)
+                x=0.75, y=1.03, showarrow=false)
         ]
     )
 
@@ -506,15 +514,20 @@ const _eq_loc_data = read_all_loc_JLD2_files(_available_eqs_jld2)
         av_raw = 0
         scale = 2
         sorted_pixels = sort(tryparse.(Int, all_pixels))
-        npixels = length(sorted_pixels)
+
 
         traces_usvs_all = []
+
+        EQ = _eq_data[jld_file_index]
+        pixel_stds = [mean(std(envelope(EQ[string(p)]["USVS"]), dims=2)) for p in sorted_pixels]
+        good_pixels = findall(x -> x < 0.25, pixel_stds)
+        sorted_pixels = sorted_pixels[good_pixels]
+        npixels = length(sorted_pixels)
         for (ipixel, pixel) in enumerate(sorted_pixels)
             angles = broadcast(pix2angRing(Resolution(4), pixel)) do x
                 floor(Int, rad2deg(x))
             end
-            jld_file_index = findall(x -> occursin(selected_eq, x), _available_eqs_jld2)[1]
-            stf_bundle = _eq_data[jld_file_index]["$(string(pixel))"]
+            stf_bundle = EQ["$(string(pixel))"]
 
             pixel_stf = dropdims(mean(envelope(stf_bundle["USVS"]), dims=2), dims=2)
             # pixel_stf = vec(mean(envelope(stf_bundle["USVS"]), dims=2))

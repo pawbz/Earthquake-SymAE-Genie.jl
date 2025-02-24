@@ -110,6 +110,9 @@ end
 # ╔═╡ 65c0e73c-668e-4742-8004-7d54acf75bca
 plot(depth)
 
+# ╔═╡ b2e83063-5e24-4bb8-85e3-f6fba1f8f58a
+findall(x->x>0, randn(10))
+
 # ╔═╡ 158138b5-5c7b-4b29-a100-a1b6e296651c
 md"# Plotting slab"
 
@@ -868,6 +871,7 @@ version = "17.4.0+2"
 # ╟─eaa202a6-3dce-4f67-8b3b-af886a9cf987
 # ╠═62895cf7-fff2-49f4-a63a-5b37dd89b096
 # ╠═65c0e73c-668e-4742-8004-7d54acf75bca
+# ╠═b2e83063-5e24-4bb8-85e3-f6fba1f8f58a
 # ╟─158138b5-5c7b-4b29-a100-a1b6e296651c
 # ╠═6283c23a-ce92-11ef-16ee-23fb2172020b
 # ╠═fdba8dd3-be75-4492-a1f6-f6e38b741170

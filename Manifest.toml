@@ -2,7 +2,7 @@
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "5cc5bd0e17be6dd464941558dabb8e772094e046"
+project_hash = "be26bf693753cce2973a97a3aa5ebd1f437ae741"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -979,9 +979,9 @@ version = "0.34.4"
 
 [[deps.Stipple]]
 deps = ["Dates", "FilePathsBase", "Genie", "GenieSession", "GenieSessionFileSession", "JSON3", "Logging", "MacroTools", "Mixers", "Observables", "OrderedCollections", "Parameters", "Pkg", "PrecompileTools", "Random", "Reexport", "Requires", "StructTypes", "Tables"]
-git-tree-sha1 = "2d33ebf1fc77b0703023b9d36d714de17d96f486"
+git-tree-sha1 = "b17459c788f07ab034fff020a9e5d878882b8055"
 uuid = "4acbeb90-81a0-11ea-1966-bdaff8155998"
-version = "0.31.8"
+version = "0.31.12"
 
     [deps.Stipple.extensions]
     StippleDataFramesExt = "DataFrames"
